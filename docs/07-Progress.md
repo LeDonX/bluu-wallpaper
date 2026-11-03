@@ -151,7 +151,7 @@
 | DR-027 | 默认背景采用 CSS 浮动光斑：4 个大尺寸径向渐变圆，静态 `blur`，仅用 `transform` / `opacity` 做 28–42s 漂移与呼吸；不引入 Canvas/WebGL 或第三方背景库 | 用户指定该动效为默认背景；CSS 零依赖、可随主题换色、可用 `prefers-reduced-motion` 降级；只动合成属性，避免重排 | 光斑层 `pointer-events:none`、`aria-hidden`；窗口失焦暂停；Mica 下压低透明度；P4 验证滚动帧率 |
 | DR-029 | T-18 新增 IPC `views:list`（`{site, postIds[]}` → 已看 `postIds`）；`views:mark` 返回 `Result<null>`；`post_views` 用迁移 002 单独建表 | 03 §6.2 要求"批量查询已看状态"但 §7 只列了 `views:mark` / `views:stats` / `views:clear`，缺少批量读取通道；重启后网格要恢复变暗必须批量查询。单条 `views:stats` 留给查看器信息栏（02 §5.2），本任务不提前实现。迁移 001 已在用户库应用，只能新增 002，不能改 001 | 03 §7 补 `views:list` 行；重启恢复状态可自动化验证；T-19/T-20 直接复用该通道 |
 | DR-028 | 查看器取消 8MB 阈值与"加载原图"按钮：打开即并行加载 sample 与 file，file 就绪后替换；两种图片统一走新 IPC `images:fetch`（主进程 `ses.fetch` 流式读取，事件 `images:progress` 节流报告字节进度），渲染层用 `blob:` 展示并做最多 3 张 LRU 内存缓存；`img-src` 增加 `blob:`。不预取邻居，不再从渲染层直连图片域名 | 用户明确要求自动加载原图并显示明确进度。`<img>` 无法暴露下载字节数；渲染层 `fetch` 受 CORS 限制，只有主进程流式读取能给出真实百分比（05 §2 网络仅在 main）；改用 blob 也顺带规避 DR-025 的 Referer 热链问题 | 新增 IPC 契约（03 §7）与 `blob:` CSP；大图（≤64MB）经 IPC 复制 ArrayBuffer 有内存峰值；切图频繁时旧请求不取消，仅忽略过期结果；后续 T-23 下载器可复用该流式读取 |
-| DR-030 | 产品名定为 **Bluu（蓝噗）**：`Bluu` 为 blue 的可爱拉长拼写，中文「蓝噗」取鲨鱼吐泡拟声；品牌角色为原创圆身蓝鲨「噗噗」。`appId` / `productName` / 窗口标题统一为 Bluu / 蓝噗，`author` 为 LeDon；数据库文件改为 `userData/bluu.db`；内部技术命名（`window.booru`、`BooruApi`、`booru://`、IPC 前缀）保持不变 | 用户确定以可爱蓝鲨角色为中心，且希望名字与个人 ID `LeDon` 有关；品牌与领域术语分离可避免全量 API/协议回归，用户可见处仍统一 | Electron `userData` 目录随应用名变为 `%APPDATA%\bluu`；未发布，不写自动迁移代码，旧 `%APPDATA%\booru-desktop` 的 `config.json`、`booru.db`（改名为 `bluu.db`）与 `Partitions` 手工复制；发布前需做 Bluu / 蓝噗 商标与撞名检索 |
+| DR-030 | 产品名定为 **Bluu（蓝噗）**：`Bluu` 为 blue 的可爱拉长拼写，中文「蓝噗」取鲨鱼吐泡拟声；品牌角色为原创圆身蓝鲨「噗噗」。`appId` / `productName` / 窗口标题统一为 Bluu / 蓝噗，`author` 为 LeDon；数据库文件改为 `userData/bluu.db`；内部技术命名（`window.booru`、`BooruApi`、`booru://`、IPC 前缀）保持不变 | 用户确定以可爱蓝鲨角色为中心，且希望名字与个人 ID `LeDon` 有关；品牌与领域术语分离可避免全量 API/协议回归，用户可见处仍统一 | Electron `userData` 目录随应用名变为 `%APPDATA%\bluu`；未发布，不写自动迁移代码，旧 `%APPDATA%\booru-desktop` 的 `config.json` 与 `booru.db`（改名为 `bluu.db`）已手工复制；按用户选择不复制 `Partitions`，站点 cookie 与 CF clearance 由应用重新生成；发布前需做 Bluu / 蓝噗 商标与撞名检索 |
 
 ---
 
@@ -426,7 +426,8 @@
 - 决策: DR-030——产品名 **Bluu / 蓝噗**，角色为原创圆身蓝鲨「噗噗」；`appId=com.bluu.app`、`productName=Bluu`、`author=LeDon`、数据库 `userData/bluu.db`；`window.booru` / `BooruApi` / `booru://` / IPC 前缀等技术命名不跟随品牌，避免全量回归
 - 改动: `APP_NAME='蓝噗'` 并新增 `APP_NAME_EN='Bluu'`；窗口标题与安装器/快捷方式名统一；02 §1.1 新增品牌与角色规范（配色、加载泡泡、角色出现位置）
 - 验证: `pnpm lint` 通过；`pnpm typecheck` 通过（node + web）；`pnpm test` 149/149 通过（21 个文件）；`pnpm build` 三端成功（main 37.18 kB、preload 1.11 kB、renderer 52 modules / CSS 15.93 kB）
-- 遗留: 旧 `%APPDATA%\booru-desktop` 到 `%APPDATA%\bluu` 的数据迁移被权限校验拦截，等待用户确认后执行（`config.json`、`booru.db`→`bluu.db`、`Partitions`）；品牌角色/图标未绘制（T-43）；发布前需 Bluu / 蓝噗 商标与撞名检索；真实窗口标题与安装包名需本地人工确认
+- 迁移: 用户确认只迁移配置与数据库；已将 `%APPDATA%\booru-desktop\config.json` 与 `booru.db` 复制到 `%APPDATA%\bluu\`（数据库重命名为 `bluu.db`），未复制 `Partitions`，旧目录保留
+- 遗留: 站点 cookie / CF clearance 需在新目录重新获取；品牌角色/图标未绘制（T-43）；发布前需 Bluu / 蓝噗 商标与撞名检索；真实窗口标题与安装包名需本地人工确认
 - 下一步: T-19（三态角标）
 
 ---
