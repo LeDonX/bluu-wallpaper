@@ -1,0 +1,32 @@
+:root {
+  /* 02 §14.2 Design Token */
+  --bg-base: #0f1115;
+  --bg-surface: #171a21;
+  --bg-inset: #0b0d11;
+  --border: #242833;
+  --text-primary: #e6e9ef;
+  --text-secondary: #8a93a6;
+  --primary: #4c8dff;
+  --success: #3fa96b;
+  --warning: #d9a441;
+  --muted: #6b7c93;
+  --danger: #e5484d;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-title: 18px;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+}

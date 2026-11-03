@@ -1,0 +1,9 @@
+node_modules
+out
+dist
+release
+pnpm-lock.yaml
+docs
+fixtures
+.screenshots
+.trae-html-share-packages

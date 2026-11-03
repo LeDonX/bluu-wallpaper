@@ -1,0 +1,88 @@
+.progress {
+  display: flex;
+  min-width: 220px;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: rgba(15, 17, 21, 0.86);
+}
+
+.progress[data-textless='true'] {
+  min-width: 240px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.progress[data-textless='true'] .progressTrack {
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.progressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progressLabel {
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.progressBytes {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--bg-inset);
+}
+
+.progressFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--primary);
+  transition: width var(--motion-fast) linear;
+}
+
+.progress[data-indeterminate='true'] .progressFill {
+  width: 35%;
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+.progress[data-tone='danger'] {
+  border-color: var(--danger);
+}
+
+.progress[data-tone='danger'] .progressFill {
+  background-color: var(--danger);
+}
+
+@keyframes indeterminate {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(320%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress[data-indeterminate='true'] .progressFill {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}
