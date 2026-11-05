@@ -1,0 +1,41 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+}
+
+.menu {
+  position: fixed;
+  display: flex;
+  width: 168px;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.item {
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled),
+.item:focus-visible {
+  background-color: var(--primary);
+  color: #14202b; /* 强调色上的文字必须深色 */
+  outline: none;
+}
+
+.item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

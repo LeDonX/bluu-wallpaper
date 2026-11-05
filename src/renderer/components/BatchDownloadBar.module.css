@@ -1,0 +1,68 @@
+.bar {
+  position: fixed;
+  right: var(--space-4);
+  /* 状态栏 28px 之上悬浮，不占据结果页布局（DR-046） */
+  bottom: calc(28px + var(--space-3));
+  z-index: 120; /* 02 §14.2 z-floating */
+  display: flex;
+  max-width: min(560px, calc(100vw - 2 * var(--space-4)));
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ghost,
+.primary {
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ghost {
+  border: 1px solid var(--border);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.primary {
+  border: 1px solid transparent;
+  background-color: var(--primary);
+  color: #14202b; /* 强调色上的文字必须深色 */
+  font-weight: 600;
+}
+
+.ghost:hover:not(:disabled),
+.primary:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.ghost:disabled,
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghost:focus-visible,
+.primary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

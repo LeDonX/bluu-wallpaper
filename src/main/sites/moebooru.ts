@@ -10,6 +10,12 @@ import {
   type TagSuggestion,
   tagTypeFromCode
 } from '@shared/models';
+import {
+  buildRankingPath,
+  type RankingDate,
+  type RankingKind,
+  rankingSupportsPaging
+} from '@shared/rankings';
 import { siteBaseUrl } from '@shared/sites';
 import { z } from 'zod';
 
@@ -33,6 +39,8 @@ const RawPostSchema = z.object({
   score: z.number(),
   tags: z.string(),
   file_url: z.string(),
+  jpeg_url: z.string().nullish(),
+  jpeg_file_size: z.number().nullish(),
   sample_url: z.string(),
   preview_url: z.string(),
   width: z.number(),
@@ -96,6 +104,8 @@ const normalizePost = (raw: RawPost, site: SiteId): Post => {
     previewUrl: raw.preview_url,
     sampleUrl: raw.sample_url,
     fileUrl: raw.file_url,
+    jpegUrl: raw.jpeg_url ?? '',
+    jpegFileSize: raw.jpeg_file_size ?? 0,
     width: raw.width,
     height: raw.height,
     fileSize: raw.file_size,
@@ -150,6 +160,12 @@ export interface MoebooruAdapter {
   readonly id: SiteId;
   readonly baseUrl: string;
   search(query: ParsedQuery, cursor?: SearchCursor): Promise<PostPage>;
+  /** DR-041：热门固定单页；期榜按日期请求，`date` 缺失时抛错 */
+  rankings(
+    kind: RankingKind,
+    date: RankingDate | undefined,
+    cursor?: SearchCursor
+  ): Promise<PostPage>;
   suggestTags(prefix: string, limit?: number): Promise<TagSuggestion[]>;
 }
 
@@ -174,6 +190,19 @@ export function createMoebooruAdapter(options: MoebooruAdapterOptions): Moebooru
 
       const posts = parseBody(result.data.body)
         // 06 §3 归一化规则 3：非 active 条目丢弃
+        .filter((raw) => raw.status === 'active')
+        .map((raw) => normalizePost(raw, site));
+
+      return { posts, page, lastId: posts[posts.length - 1]?.id ?? null };
+    },
+    async rankings(kind, date, cursor) {
+      // DR-041：热门忽略 page，只取第 1 页；期榜按 page 请求
+      const requestedPage = cursor !== undefined && 'page' in cursor ? cursor.page : 1;
+      const page = rankingSupportsPaging(kind) ? requestedPage : 1;
+      const result = await client.request(buildRankingPath(kind, date, page, limit));
+      if (!result.ok) throw new AppErrorException(result.error);
+
+      const posts = parseBody(result.data.body)
         .filter((raw) => raw.status === 'active')
         .map((raw) => normalizePost(raw, site));
 

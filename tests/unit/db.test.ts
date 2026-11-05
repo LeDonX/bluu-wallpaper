@@ -55,7 +55,15 @@ describeWithSqlite('SQLite 迁移 001', () => {
   it('首次迁移建立 posts 与 tag_cache', () => {
     applyMigrations(database);
 
-    expect(tableNames()).toEqual(['post_views', 'posts', 'schema_migrations', 'tag_cache']);
+    expect(tableNames()).toEqual([
+      'download_tasks',
+      'favorites',
+      'post_views',
+      'posts',
+      'schema_migrations',
+      'search_history',
+      'tag_cache'
+    ]);
 
     const postsColumns = database.prepare('PRAGMA table_info(posts)').all() as Array<{
       name: string;
@@ -85,7 +93,15 @@ describeWithSqlite('SQLite 迁移 001', () => {
     expect(applyMigrations(database)).toBe(MIGRATIONS.length);
     expect(applyMigrations(database)).toBe(0);
     expect(countRows('schema_migrations')).toBe(MIGRATIONS.length);
-    expect(tableNames()).toEqual(['post_views', 'posts', 'schema_migrations', 'tag_cache']);
+    expect(tableNames()).toEqual([
+      'download_tasks',
+      'favorites',
+      'post_views',
+      'posts',
+      'schema_migrations',
+      'search_history',
+      'tag_cache'
+    ]);
   });
 
   it('事务失败时回滚已写入的数据', () => {

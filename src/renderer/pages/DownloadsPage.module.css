@@ -1,0 +1,60 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  gap: var(--space-4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: 600;
+}
+
+.summary {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.clearButton {
+  flex: none;
+  height: 30px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-inset);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.clearButton:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.error {
+  flex: none;
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+}

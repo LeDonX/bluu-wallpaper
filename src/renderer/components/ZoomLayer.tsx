@@ -1,6 +1,13 @@
-import { stepZoom, type ViewerTransform, zoomAtPoint } from '@shared/viewer';
+import {
+  clampViewerOffset,
+  fitContentSize,
+  stepZoom,
+  type ViewerSize,
+  type ViewerTransform,
+  zoomAtPoint
+} from '@shared/viewer';
 import type { PointerEvent, ReactElement, ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import styles from './ImageViewer.module.css';
 
@@ -40,11 +47,42 @@ export function ZoomLayer({
   children
 }: ZoomLayerProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
   // 只渲染一张图：原图就绪后直接替换预览图，避免两张图叠在一起
   const src = originalSrc ?? sampleSrc;
   const zoomed = transform.zoom > 1;
+
+  /** 读取预览区尺寸与图片 100% 时的 contain 展示尺寸，用于拖拽边界 */
+  const measureBounds = useCallback((): { content: ViewerSize; viewport: ViewerSize } | null => {
+    const canvas = containerRef.current;
+    const image = imageRef.current;
+    if (canvas === null || image === null) return null;
+    if (image.naturalWidth <= 0 || image.naturalHeight <= 0) return null;
+
+    const viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
+    const content = fitContentSize(
+      { width: image.naturalWidth, height: image.naturalHeight },
+      viewport
+    );
+    return { content, viewport };
+  }, []);
+
+  const clampTransform = useCallback(
+    (next: ViewerTransform): ViewerTransform => {
+      const bounds = measureBounds();
+      if (bounds === null) return next;
+      return clampViewerOffset(next, bounds.content, bounds.viewport);
+    },
+    [measureBounds]
+  );
+
+  // 键盘缩放、图片替换后兜底：任何来源的变换都收回到图片边界内
+  useEffect(() => {
+    const clamped = clampTransform(transform);
+    if (clamped !== transform) onTransformChange(clamped);
+  }, [clampTransform, onTransformChange, src, transform]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -58,14 +96,14 @@ export function ZoomLayer({
         y: event.clientY - rect.top - rect.height / 2
       };
       const nextZoom = stepZoom(transform.zoom, event.deltaY < 0 ? 1 : -1);
-      onTransformChange(zoomAtPoint(transform, nextZoom, pointer, { x: 0, y: 0 }));
+      onTransformChange(clampTransform(zoomAtPoint(transform, nextZoom, pointer, { x: 0, y: 0 })));
     };
 
     element.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
       element.removeEventListener('wheel', handleWheel);
     };
-  }, [onTransformChange, transform]);
+  }, [clampTransform, onTransformChange, transform]);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>): void => {
     if (!zoomed || event.button !== 0) return;
@@ -83,11 +121,13 @@ export function ZoomLayer({
     const drag = dragRef.current;
     if (drag === null || drag.pointerId !== event.pointerId) return;
 
-    onTransformChange({
-      ...transform,
-      offsetX: drag.offsetX + event.clientX - drag.startX,
-      offsetY: drag.offsetY + event.clientY - drag.startY
-    });
+    onTransformChange(
+      clampTransform({
+        ...transform,
+        offsetX: drag.offsetX + event.clientX - drag.startX,
+        offsetY: drag.offsetY + event.clientY - drag.startY
+      })
+    );
   };
 
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>): void => {
@@ -118,7 +158,13 @@ export function ZoomLayer({
         }}
       >
         {src !== null ? (
-          <img className={styles.image} src={src} alt={alt} draggable={false} />
+          <img
+            ref={imageRef}
+            className={styles.image}
+            src={src}
+            alt={alt}
+            draggable={false}
+          />
         ) : null}
       </div>
       {children}

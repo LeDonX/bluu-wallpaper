@@ -9,6 +9,8 @@
 
 > 本合同是适配器实现的唯一依据。字段变更必须先改本文，再改代码。
 
+> **启用状态（2026-11-05/T-28）**：两站均已启用，`src/main/sites/adapters.ts#getSiteAdapter(site)` 按站点复用 `moebooru.ts`，konachan 走 CF 通道（DR-010 / DR-057）。konachan 的 Post/Tag 字段结构仍未实测（P-02），本合同第 2/3 节中 konachan 字段仍按"与 yande 相同"的预期记录，实测后须替换 `fixtures/konachan/` 并更新本合同。
+
 ---
 
 ## 1. 基础信息
@@ -59,7 +61,8 @@
 | `file_url` | string | `https://files.yande.re/image/...` | 原图 |
 | `sample_url` | string | `https://files.yande.re/sample/...` | 大图预览 |
 | `preview_url` | string | `https://assets.yande.re/data/preview/...` | 缩略图 |
-| `jpeg_url` | string | 同上原图 | 备用，字段名与 `file_url` 相同 |
+| `jpeg_url` | string | 可能与 `file_url` 不同（站点的较小 JPG 压缩版）；JPG 原图帖与 `file_url` 相同 | 仅当与 `file_url` 不同且 `jpeg_file_size > 0` 时视为独立格式（07 DR-051；P-23 待实测数值） |
+| `jpeg_file_size` | number | `jpeg_url` 对应字节数；无独立版本时为 0 | JPEG 变体任务的预估体积来源 |
 | `width` / `height` | number | `3000` / `3950` | 原图尺寸 |
 | `sample_width` / `sample_height` | number | `1139` / `1500` | sample 尺寸 |
 | `preview_width` / `preview_height` | number | `114` / `150` | 缩略图尺寸 |
@@ -76,11 +79,12 @@
 | `frames` | array | `[]` | 动图帧，通常空 |
 | `is_pending` / `is_held` | boolean | `false` | 审核状态，非 `active` 的应过滤 |
 
-**适配器归一化必须做的三件事**
+**适配器归一化必须做的四件事**
 
 1. `rating`：`s→safe`、`q→questionable`、`e→explicit`
 2. 时间：`created_at` × 1000 得到 epoch ms
 3. 过滤：`status !== 'active'` 的条目丢弃
+4. JPEG 变体：`jpeg_url` / `jpeg_file_size` 缺失时按 `''` / `0` 处理；`jpeg_url === file_url` 或大小为 0 表示没有独立压缩版（07 DR-051）
 
 ---
 
@@ -109,6 +113,9 @@
 | `GET /post.json?tags=id:1271989&limit=1` | 200 | 精确命中 1 条，`id:` 语法有效 |
 | `GET /tag.json?name=hatsune*&limit=5` | 200 | 返回 5 条，前缀通配有效 |
 | `GET /post/popular_recent.json?period=1d&limit=3` | 200 | **返回 40 条，`limit` 被忽略**；`period` 是否生效未验证，实现时按 40 条处理并本地分页 |
+| `GET /post/popular_by_day.json?year=2026&month=11&day=05&limit=100&page=1` | 未实测 | 日榜，按 `page` 分页（07 DR-041 / P-18，真实响应待验） |
+| `GET /post/popular_by_week.json?year=2026&month=11&day=05&limit=100&page=1` | 未实测 | 周榜，参数同日榜（同上） |
+| `GET /post/popular_by_month.json?year=2026&month=11&limit=100&page=1` | 未实测 | 月榜，不带 `day`（同上） |
 | `GET /comment.json?post_id=` | 未测 | 首版不使用 |
 | `GET /post.json` 无匹配 | 未测 | 预期 200 + `[]`，适配器需按空数组处理 |
 
@@ -189,3 +196,13 @@ curl -sS --resolve yande.re:443:198.251.89.183 \
 2. 更新 `07-Progress.md` 的"已知问题"
 3. 再改适配器与测试
 4. 若影响 UI（如新增字段），同步 `02-UX-Design.md`
+
+---
+
+## 9. 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 2026-11-03 | 初版：yande 实测字段/端点、konachan CF 行为与 fixtures |
+| 2026-11-05 | T-33 文档同步：补 `jpeg_url` 独立压缩版语义与 `jpeg_file_size` 字段、归一化第 4 条；补 `popular_by_day/week/month` 端点（未实测，P-18）；标注当前仅启用 yande.re |
+| 2026-11-05 | T-28 / DR-057：启用状态改为两站已接入（`adapters.ts`），补充 konachan 字段仍属预期（P-02）；图片 host 映射新增 `konachan.com` / `assets.konachan.com`（P-04 待实测） |

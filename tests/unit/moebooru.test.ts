@@ -71,6 +71,34 @@ describe('moebooru 适配器归一化', () => {
     expect(page.lastId).toBe(1271988);
   });
 
+  it('归一化 jpeg_url/jpeg_file_size，原图为 JPG 时两者与 file_url 一致（06 §4）', async () => {
+    const body = JSON.stringify([
+      rawPost({
+        id: 1,
+        file_url: 'https://files.example/image/1.png',
+        jpeg_url: 'https://files.example/image/1.jpg',
+        jpeg_file_size: 500
+      }),
+      rawPost({
+        id: 2,
+        jpeg_url: 'https://files.example/image/1.jpg',
+        jpeg_file_size: 0
+      })
+    ]);
+    const adapter = createMoebooruAdapter({ site: 'yande', client: fakeClient(body).client });
+
+    const page = await adapter.search(parseQuery(''));
+
+    expect(page.posts[0]).toMatchObject({
+      jpegUrl: 'https://files.example/image/1.jpg',
+      jpegFileSize: 500
+    });
+    expect(page.posts[1]).toMatchObject({
+      jpegUrl: 'https://files.example/image/1.jpg',
+      jpegFileSize: 0
+    });
+  });
+
   it('s/q/e 全部映射为 safe/questionable/explicit', async () => {
     const body = JSON.stringify([
       rawPost({ id: 1, rating: 's' }),
@@ -139,6 +167,56 @@ describe('moebooru 适配器分页', () => {
 
     expect(paths).toEqual(['/post.json?tags=id%3A1271989&limit=100&page=1']);
     expect(page.posts.map((post) => post.id)).toEqual([1271989]);
+  });
+});
+
+describe('moebooru 适配器榜单（DR-041）', () => {
+  it('热门固定 period=1d，返回 fixtures 的 40 条并归一化', async () => {
+    const { client, paths } = fakeClient(readFixture('popular-recent.json'));
+    const adapter = createMoebooruAdapter({ site: 'yande', client });
+
+    const page = await adapter.rankings('popular', undefined);
+
+    expect(paths).toEqual(['/post/popular_recent.json?period=1d']);
+    expect(page.posts).toHaveLength(40);
+    expect(page.posts[0]).toMatchObject({ site: 'yande', id: 1271732 });
+    expect(page.lastId).toBe(1271210);
+    expect(page.page).toBe(1);
+  });
+
+  it('热门忽略 page 游标，始终只取第 1 页（DR-008）', async () => {
+    const { client, paths } = fakeClient(readFixture('popular-recent.json'));
+    const adapter = createMoebooruAdapter({ site: 'yande', client });
+
+    const page = await adapter.rankings('popular', undefined, { page: 2 });
+
+    expect(paths).toEqual(['/post/popular_recent.json?period=1d']);
+    expect(page.page).toBe(1);
+  });
+
+  it('日榜带 year/month/day 与 page', async () => {
+    const { client, paths } = fakeClient(readFixture('posts-safe.json'));
+    const adapter = createMoebooruAdapter({ site: 'yande', client });
+
+    const page = await adapter.rankings('day', { year: 2026, month: 11, day: 4 }, { page: 2 });
+
+    expect(paths).toEqual([
+      '/post/popular_by_day.json?year=2026&month=11&day=4&limit=100&page=2'
+    ]);
+    expect(page.page).toBe(2);
+  });
+
+  it('周榜带 year/month/day，月榜不带 day', async () => {
+    const { client, paths } = fakeClient('[]');
+    const adapter = createMoebooruAdapter({ site: 'yande', client });
+
+    await adapter.rankings('week', { year: 2026, month: 10, day: 26 });
+    await adapter.rankings('month', { year: 2026, month: 10, day: 4 });
+
+    expect(paths).toEqual([
+      '/post/popular_by_week.json?year=2026&month=10&day=26&limit=100&page=1',
+      '/post/popular_by_month.json?year=2026&month=10&limit=100&page=1'
+    ]);
   });
 });
 

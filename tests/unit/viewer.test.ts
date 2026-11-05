@@ -1,5 +1,7 @@
 import {
+  clampViewerOffset,
   clampZoom,
+  fitContentSize,
   formatFileSize,
   progressPercent,
   resetViewerTransform,
@@ -12,16 +14,17 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('查看器缩放', () => {
-  it('clampZoom 限制在 0.5–4 倍，非法值回到 1', () => {
+  it('clampZoom 限制在 1–4 倍，非法值回到 1', () => {
     expect(clampZoom(0.1)).toBe(VIEWER_MIN_ZOOM);
     expect(clampZoom(10)).toBe(VIEWER_MAX_ZOOM);
     expect(clampZoom(Number.NaN)).toBe(1);
     expect(clampZoom(2)).toBe(2);
   });
 
-  it('stepZoom 每次 ±0.25 且不越界', () => {
+  it('stepZoom 每次 ±0.25，最小停在默认大小', () => {
     expect(stepZoom(1, 1)).toBe(1.25);
-    expect(stepZoom(1, -1)).toBe(0.75);
+    expect(stepZoom(1, -1)).toBe(VIEWER_MIN_ZOOM);
+    expect(stepZoom(1.25, -1)).toBe(VIEWER_MIN_ZOOM);
     expect(stepZoom(VIEWER_MAX_ZOOM, 1)).toBe(VIEWER_MAX_ZOOM);
     expect(stepZoom(VIEWER_MIN_ZOOM, -1)).toBe(VIEWER_MIN_ZOOM);
   });
@@ -42,6 +45,68 @@ describe('查看器缩放', () => {
   it('zoomAtPoint 在相同缩放时保持偏移不变', () => {
     const current = { zoom: 2, offsetX: 12, offsetY: -8 };
     expect(zoomAtPoint(current, 2, { x: 30, y: 40 }, { x: 0, y: 0 })).toEqual(current);
+  });
+
+  it('缩小到默认大小时重置偏移（不产生负缩放）', () => {
+    const current = { zoom: 2, offsetX: 120, offsetY: -80 };
+    const next = zoomAtPoint(current, 1, { x: 50, y: 30 }, { x: 0, y: 0 });
+
+    expect(next).toEqual({ zoom: VIEWER_MIN_ZOOM, offsetX: 0, offsetY: 0 });
+  });
+});
+
+describe('查看器拖拽边界（02 §5.2）', () => {
+  it('fitContentSize 按 contain 等比适配', () => {
+    const fitted = fitContentSize({ width: 2000, height: 3000 }, { width: 1000, height: 800 });
+
+    expect(fitted.width).toBeCloseTo(533.33, 2);
+    expect(fitted.height).toBe(800);
+  });
+
+  it('任一尺寸非法时返回 0', () => {
+    expect(fitContentSize({ width: 0, height: 300 }, { width: 1000, height: 800 })).toEqual({
+      width: 0,
+      height: 0
+    });
+    expect(fitContentSize({ width: 200, height: 200 }, { width: 0, height: 0 })).toEqual({
+      width: 0,
+      height: 0
+    });
+  });
+
+  it('100% 缩放时偏移被强制归零', () => {
+    const content = { width: 800, height: 400 };
+    const viewport = { width: 1000, height: 800 };
+
+    expect(clampViewerOffset({ zoom: 1, offsetX: 50, offsetY: 20 }, content, viewport)).toEqual({
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0
+    });
+  });
+
+  it('放大后最多拖到图片边缘与预览区边缘对齐', () => {
+    const content = { width: 800, height: 400 };
+    const viewport = { width: 1000, height: 800 };
+
+    // 2 倍：1600×800，左右各余 300 可拖，高度正好填满
+    expect(clampViewerOffset({ zoom: 2, offsetX: 900, offsetY: 100 }, content, viewport)).toEqual({
+      zoom: 2,
+      offsetX: 300,
+      offsetY: 0
+    });
+    expect(clampViewerOffset({ zoom: 2, offsetX: -120, offsetY: 0 }, content, viewport)).toEqual({
+      zoom: 2,
+      offsetX: -120,
+      offsetY: 0
+    });
+  });
+
+  it('已在边界内时保持原对象引用', () => {
+    const current = { zoom: 2, offsetX: 100, offsetY: 0 };
+    expect(clampViewerOffset(current, { width: 800, height: 400 }, { width: 1000, height: 800 })).toBe(
+      current
+    );
   });
 });
 

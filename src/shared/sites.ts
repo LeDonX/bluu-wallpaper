@@ -9,3 +9,9 @@ export const SITE_BASE_URLS: Record<SiteId, string> = {
 export function siteBaseUrl(site: SiteId): string {
   return SITE_BASE_URLS[site];
 }
+
+/** 02 §2.1 / §4：界面站点名，两站切换统一使用 */
+export const SITE_LABELS: Record<SiteId, string> = {
+  yande: 'yande.re',
+  konachan: 'konachan.com'
+};

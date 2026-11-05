@@ -44,6 +44,10 @@ export interface Post {
   previewUrl: string;
   sampleUrl: string;
   fileUrl: string;
+  /** 06 §4：原图为 PNG 时站点提供的 JPEG 压缩版；与原图相同的 URL 表示没有独立版本 */
+  jpegUrl?: string;
+  /** JPEG 压缩版字节数；0 表示不可用 */
+  jpegFileSize?: number;
   width: number;
   height: number;
   fileSize: number;
@@ -65,4 +69,6 @@ export interface PostPage {
   lastId: number | null;
   /** 本次是否由服务端自动附加了 R18 排除项（07 DR-023），供界面提示 */
   r18Filtered?: boolean;
+  /** 07 DR-056：搜索为追加的 `-tag` 数量，榜单为本地丢弃的图片数量 */
+  blacklistFiltered?: number;
 }

@@ -1,5 +1,5 @@
-/** 02 §5.2：滚轮与快捷键共享的缩放范围 */
-export const VIEWER_MIN_ZOOM = 0.5;
+/** 02 §5.2：滚轮与快捷键共享的缩放范围；最小为默认适应尺寸，不允许缩得更小 */
+export const VIEWER_MIN_ZOOM = 1;
 export const VIEWER_MAX_ZOOM = 4;
 export const VIEWER_ZOOM_STEP = 0.25;
 
@@ -13,6 +13,39 @@ export interface ViewerTransform {
 export interface ViewerPoint {
   x: number;
   y: number;
+}
+
+export interface ViewerSize {
+  width: number;
+  height: number;
+}
+
+/** 02 §5.2：把图片按 contain 适配到预览区后的展示尺寸（100% 缩放时） */
+export function fitContentSize(content: ViewerSize, viewport: ViewerSize): ViewerSize {
+  if (content.width <= 0 || content.height <= 0 || viewport.width <= 0 || viewport.height <= 0) {
+    return { width: 0, height: 0 };
+  }
+
+  const scale = Math.min(viewport.width / content.width, viewport.height / content.height);
+  return { width: content.width * scale, height: content.height * scale };
+}
+
+/** 02 §5.2：拖拽边界——放大后最多拖到图片边缘与预览区边缘对齐 */
+export function clampViewerOffset(
+  transform: ViewerTransform,
+  content: ViewerSize,
+  viewport: ViewerSize
+): ViewerTransform {
+  const zoom = clampZoom(transform.zoom);
+  const maxX = Math.max(0, (content.width * zoom - viewport.width) / 2);
+  const maxY = Math.max(0, (content.height * zoom - viewport.height) / 2);
+  const offsetX = Math.min(maxX, Math.max(-maxX, transform.offsetX));
+  const offsetY = Math.min(maxY, Math.max(-maxY, transform.offsetY));
+
+  if (offsetX === transform.offsetX && offsetY === transform.offsetY && zoom === transform.zoom) {
+    return transform;
+  }
+  return { zoom, offsetX, offsetY };
 }
 
 export function clampZoom(zoom: number): number {
@@ -41,6 +74,11 @@ export function zoomAtPoint(
   const fromZoom = clampZoom(current.zoom);
   const toZoom = clampZoom(nextZoom);
   if (toZoom === fromZoom) return { ...current, zoom: toZoom };
+
+  // 缩到最小即回到默认适应尺寸：一并清空拖动偏移，避免图片偏出画布
+  if (toZoom <= VIEWER_MIN_ZOOM) {
+    return { zoom: VIEWER_MIN_ZOOM, offsetX: 0, offsetY: 0 };
+  }
 
   const ratio = 1 - toZoom / fromZoom;
   return {

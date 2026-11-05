@@ -1,4 +1,5 @@
 import type { Post } from '@shared/models';
+import { postSelectionKey } from '@shared/selection';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -13,8 +14,18 @@ const NEAR_END_PX = 300; // 02 §2.2：触底 300px 触发加载
 export interface PostGridProps {
   posts: readonly Post[];
   viewedIds: ReadonlySet<number>;
+  /** T-21：★ 角标数据源，与已看集合独立 */
+  favoritedIds: ReadonlySet<number>;
+  /** T-27 / DR-039：多选键集合；仅在开启多选（传入 onToggleSelect）时渲染勾选框 */
+  selectedKeys?: ReadonlySet<string>;
   loading: boolean;
   onNearEnd(): void;
+  /** 02 §6.3：内容填不满视口时上报，供隐藏已看自动补页 */
+  onUnderfilled?(): void;
+  onToggleFavorite(post: Post): void;
+  onToggleSelect?(post: Post, shiftKey: boolean): void;
+  /** 右键卡片菜单（DR-046），坐标透传给页面 */
+  onContextMenu?(x: number, y: number): void;
   onOpen(post: Post): void;
 }
 
@@ -25,8 +36,14 @@ export interface PostGridProps {
 export function PostGrid({
   posts,
   viewedIds,
+  favoritedIds,
+  selectedKeys,
   loading,
   onNearEnd,
+  onUnderfilled,
+  onToggleFavorite,
+  onToggleSelect,
+  onContextMenu,
   onOpen
 }: PostGridProps): ReactElement {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +71,13 @@ export function PostGrid({
     }
     return result;
   }, [columns, posts]);
+
+  // 02 §6.3：过滤后内容填不满视口时不会产生滚动事件，需主动上报以便自动补页
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    if (element.scrollHeight - element.clientHeight < NEAR_END_PX) onUnderfilled?.();
+  }, [posts.length, columns, viewportWidth, onUnderfilled]);
 
   // @tanstack/react-virtual 的 hook 返回值无法被 React Compiler 安全 memoize，官方 API 无法规避
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -91,6 +115,11 @@ export function PostGrid({
                   key={`${post.site}:${post.id}`}
                   post={post}
                   viewed={viewedIds.has(post.id)}
+                  favorited={favoritedIds.has(post.id)}
+                  selected={selectedKeys?.has(postSelectionKey(post)) === true}
+                  onToggleFavorite={onToggleFavorite}
+                  onToggleSelect={onToggleSelect}
+                  onContextMenu={onContextMenu}
                   onOpen={onOpen}
                 />
               ))}

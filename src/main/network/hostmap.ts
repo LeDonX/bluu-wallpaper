@@ -1,19 +1,15 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { type ContentConfig, defaultContentConfig, parseContentConfig } from '@shared/content';
-import {
-  buildResolverRules,
-  defaultHostmapConfig,
-  type HostmapConfig,
-  parseHostmapConfig
-} from '@shared/hostmap';
+import { defaultContentConfig, parseContentConfig } from '@shared/content';
+import { defaultDownloadConfig, parseDownloadConfig } from '@shared/downloads';
+import { buildResolverRules, defaultHostmapConfig, parseHostmapConfig } from '@shared/hostmap';
+import { defaultNetworkConfig, parseNetworkConfig } from '@shared/proxy';
+import type { Settings } from '@shared/settings';
 import { app } from 'electron';
 
-export interface AppConfig {
-  hostmap: HostmapConfig;
-  content: ContentConfig;
-}
+/** 07 DR-040：`config.json` 的分组与设置模型一致，直接复用 `Settings` 类型 */
+export type AppConfig = Settings;
 
 export const HOST_RESOLVER_RULES_SWITCH = 'host-resolver-rules';
 
@@ -21,7 +17,9 @@ const CONFIG_FILE_NAME = 'config.json';
 
 const defaultAppConfig = (): AppConfig => ({
   hostmap: defaultHostmapConfig(),
-  content: defaultContentConfig()
+  content: defaultContentConfig(),
+  downloads: defaultDownloadConfig(),
+  network: defaultNetworkConfig()
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -39,7 +37,9 @@ export function readConfig(configPath: string): AppConfig {
     const record: Record<string, unknown> = isRecord(parsed) ? parsed : {};
     return {
       hostmap: parseHostmapConfig(record['hostmap']),
-      content: parseContentConfig(record['content'])
+      content: parseContentConfig(record['content']),
+      downloads: parseDownloadConfig(record['downloads']),
+      network: parseNetworkConfig(record['network'])
     };
   } catch {
     return defaultAppConfig();

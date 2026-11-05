@@ -1,5 +1,6 @@
 import { MOEBOORU_TAG_LIMIT, type MoebooruAdapter } from '@main/sites/moebooru';
 import type { TagCache } from '@main/storage/tags';
+import type { SiteId } from '@shared/constants';
 import { type Result, toAppError } from '@shared/errors';
 import type { TagsSuggestInput } from '@shared/ipc-contract';
 import type { TagSuggestion } from '@shared/models';
@@ -9,7 +10,8 @@ import { parseSuggestInput } from '../suggest-input';
 export type TagsSuggestHandler = (raw: unknown) => Promise<Result<TagSuggestion[]>>;
 
 export interface TagsSuggestDeps {
-  adapter: Pick<MoebooruAdapter, 'suggestTags'>;
+  /** 07 DR-057：两站共用 `/tag.json` 前缀联想，按入参站点选择适配器 */
+  getAdapter: (site: SiteId) => Pick<MoebooruAdapter, 'suggestTags'>;
   cache: TagCache;
 }
 
@@ -19,7 +21,7 @@ export interface TagsSuggestDeps {
  * 依赖注入便于离线单测；失败返回 Result 信封，由渲染层静默降级。
  */
 export function createTagsSuggestHandler(deps: TagsSuggestDeps): TagsSuggestHandler {
-  const { adapter, cache } = deps;
+  const { getAdapter, cache } = deps;
 
   return async (raw) => {
     let input: TagsSuggestInput;
@@ -34,7 +36,7 @@ export function createTagsSuggestHandler(deps: TagsSuggestDeps): TagsSuggestHand
       const cached = cache.find(input.site, prefix, MOEBOORU_TAG_LIMIT);
       if (cached.length > 0) return { ok: true, data: cached };
 
-      const remote = await adapter.suggestTags(prefix, MOEBOORU_TAG_LIMIT);
+      const remote = await getAdapter(input.site).suggestTags(prefix, MOEBOORU_TAG_LIMIT);
       if (remote.length > 0) cache.save(input.site, remote);
       return { ok: true, data: remote };
     } catch (error) {

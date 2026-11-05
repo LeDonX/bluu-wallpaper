@@ -42,12 +42,17 @@ const createFakeAdapter = (result: () => Promise<PostPage> = async () => pageOf(
   return { adapter, calls };
 };
 
-/** 默认 R18 关闭（DR-023），需要放行时显式传 true */
+/** 默认 R18 关闭（DR-023）、黑名单为空；需要时显式传入 */
 const createHandler = (
-  adapter: Parameters<typeof createPostsSearchHandler>[0],
-  isExplicitAllowed = false
+  adapter: ReturnType<typeof createFakeAdapter>['adapter'],
+  isExplicitAllowed = false,
+  blacklist: string[] = []
 ): ReturnType<typeof createPostsSearchHandler> =>
-  createPostsSearchHandler(adapter, { isExplicitAllowed: () => isExplicitAllowed });
+  createPostsSearchHandler({
+    getAdapter: () => adapter,
+    isExplicitAllowed: () => isExplicitAllowed,
+    getBlacklist: () => blacklist
+  });
 
 describe('posts:search 入参校验', () => {
   it('非法 site 返回 CONFIG 且不请求适配器', async () => {
@@ -103,6 +108,24 @@ describe('posts:search 请求与错误映射', () => {
     expect(calls[0]?.query.excludedTags).toEqual(['miku']);
     expect(calls[0]?.query.excludedRatings).toEqual(['explicit']);
     expect(calls[0]?.cursor).toEqual({ page: 2 });
+  });
+
+  it('按入参站点选择适配器（DR-057）', async () => {
+    const yande = createFakeAdapter(async () => pageOf([1]));
+    const konachan = createFakeAdapter(async () => pageOf([2]));
+    const handler = createPostsSearchHandler({
+      getAdapter: (site) => (site === 'konachan' ? konachan.adapter : yande.adapter),
+      isExplicitAllowed: () => true,
+      getBlacklist: () => []
+    });
+
+    const result = await handler({ site: 'konachan', query: 'hatsune' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.posts.map((item) => item.id)).toEqual([2]);
+    expect(yande.calls).toHaveLength(0);
+    expect(konachan.calls).toHaveLength(1);
   });
 
   it('lastId 游标传给适配器', async () => {
@@ -187,6 +210,56 @@ describe('posts:search R18 默认过滤（DR-023）', () => {
     const handler = createHandler(adapter);
 
     const result = await handler({ site: 'yande', query: '  ' });
+
+    expect(result).toEqual({ ok: true, data: { posts: [], page: 1, lastId: null } });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('posts:search 标签黑名单（DR-056）', () => {
+  it('黑名单逐项追加 -tag 并回传追加数量', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter, false, ['lowres', 'bad_id']);
+
+    const result = await handler({ site: 'yande', query: 'hatsune' });
+
+    expect(result).toMatchObject({ ok: true, data: { blacklistFiltered: 2 } });
+    expect(calls[0]?.query.raw).toBe('hatsune -rating:e -lowres -bad_id');
+    expect(calls[0]?.query.excludedTags).toEqual(['lowres', 'bad_id']);
+    expect(calls[0]?.query.tags).toEqual(['hatsune']);
+  });
+
+  it('用户已显式排除同名标签时不重复追加（大小写不敏感）', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter, false, ['lowres']);
+
+    const result = await handler({ site: 'yande', query: 'hatsune -LowRes' });
+
+    expect(calls[0]?.query.raw).toBe('hatsune -LowRes -rating:e');
+    // 只剩 R18 过滤，黑名单没有新增项
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.blacklistFiltered).toBeUndefined();
+    expect(calls[0]?.query.excludedTags).toEqual(['lowres']);
+  });
+
+  it('黑名单为空时不改动查询也不回传计数', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter, true, []);
+
+    const result = await handler({ site: 'yande', query: 'hatsune' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.blacklistFiltered).toBeUndefined();
+    expect(calls[0]?.query.raw).toBe('hatsune');
+  });
+
+  it('空查询不因黑名单发起请求', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter, false, ['lowres']);
+
+    const result = await handler({ site: 'yande', query: '   ' });
 
     expect(result).toEqual({ ok: true, data: { posts: [], page: 1, lastId: null } });
     expect(calls).toHaveLength(0);

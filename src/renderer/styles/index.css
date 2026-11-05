@@ -63,11 +63,25 @@ input {
   font-size: var(--text-xs);
 }
 
+/* 02 §6.3：隐藏已看的过滤计数与连续补页跳过提示 */
+.search-page__filter-hint {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
 /* 05 §6：已看标记失败回滚后可见，不静默 */
 .search-page__view-error {
   margin: var(--space-1) 0 0;
   color: var(--danger);
   font-size: var(--text-xs);
+}
+
+/* T-27 / 02 §7.5：批量入队结果汇总，必须可见 */
+.search-page__batch-notice {
+  margin: 0;
+  color: var(--success);
+  font-size: var(--text-sm);
 }
 
 .search-page__content {
@@ -205,6 +219,92 @@ input {
   text-align: right;
 }
 
+/* 搜索历史下拉（DR-055） */
+.search-history {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+  z-index: 20;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.search-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.search-history__title {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.search-history__clear {
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.search-history__clear:hover {
+  color: var(--danger);
+}
+
+.search-history__list {
+  max-height: 320px;
+  margin: 0;
+  padding: var(--space-1) 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.search-history__item {
+  display: flex;
+  align-items: center;
+}
+
+.search-history__query {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.search-history__query:hover {
+  background-color: var(--bg-inset);
+}
+
+.search-history__remove {
+  flex: none;
+  padding: 0 var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-history__remove:hover {
+  color: var(--danger);
+}
+
 .search-bar__submit,
 .button {
   height: 38px;
@@ -256,31 +356,153 @@ input {
   text-align: center;
 }
 
-/* 卡片（button 元素，作为查看器入口） */
+/* 卡片容器：打开按钮与收藏按钮平级，避免按钮嵌套（T-21） */
 .post-card {
+  position: relative;
   display: flex;
   width: 100%;
   flex-direction: column;
   height: 280px;
-  padding: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background-color: var(--bg-surface);
   box-shadow: var(--shadow-card);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
 .post-card:hover {
   border-color: var(--primary);
 }
 
-.post-card:focus-visible {
+.post-card__open {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.post-card__open:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+
+/* T-21 / DR-045：已收藏 ★ 常显；未收藏 ☆ 只在 hover / focus 时出现 */
+.post-card__favorite {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 10;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: rgba(15, 17, 21, 0.72);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) ease-out;
+}
+
+.post-card:hover .post-card__favorite,
+.post-card:focus-within .post-card__favorite,
+.post-card__favorite[data-favorited='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.post-card__favorite:hover,
+.post-card__favorite:focus-visible,
+.post-card__favorite[data-favorited='true'] {
+  color: var(--warning);
+}
+
+/* DR-039 / DR-045：右上角状态角标默认隐藏，hover / focus 时揭示 */
+.post-card__badges {
+  opacity: 0;
+  transition: opacity var(--motion-fast) ease-out;
+}
+
+.post-card:hover .post-card__badges,
+.post-card:focus-within .post-card__badges {
+  opacity: 1;
+}
+
+/* T-27 / 02 §7.1：多选勾选框与收藏并排，避免遮挡右侧状态角标 */
+.post-card__select {
+  position: absolute;
+  top: var(--space-2);
+  left: calc(var(--space-2) + 28px);
+  z-index: 10;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(230, 233, 239, 0.42);
+  border-radius: var(--radius-sm);
+  background-color: rgba(15, 17, 21, 0.72);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1;
+  cursor: pointer;
+  /* DR-039：只在 hover / focus 时出现，避免常驻干扰图墙 */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) ease-out;
+}
+
+.post-card:hover .post-card__select,
+.post-card:focus-within .post-card__select {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.post-card__select:hover,
+.post-card__select:focus-visible,
+.post-card__select[data-selected='true'] {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: #14202b; /* 强调色上的文字必须深色 */
+}
+
+/* DR-048 / DR-049：多选期间只常显已选卡片的勾选框；收藏、角标与 hover 边框均不再出现。
+   hover / focus-within 规则的权重是 3 个类，这里必须写成两个类保证同权重靠后覆盖 */
+.post-card.post-card--select-mode .post-card__favorite,
+.post-card.post-card--select-mode .post-card__badges {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.post-card.post-card--select-mode .post-card__select {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.post-card.post-card--select-mode[data-selected='true'] .post-card__select {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.post-card--select-mode:hover:not(.post-card--selected) {
+  border-color: var(--border);
+}
+
+/* 选中态只加边框强调，不改卡片尺寸与已看透明度 */
+.post-card--selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary) inset, var(--shadow-card);
 }
 
 .post-card__image {
@@ -300,7 +522,7 @@ input {
 }
 
 .post-card--viewed:hover .post-card__image,
-.post-card--viewed:focus-visible .post-card__image {
+.post-card--viewed:focus-within .post-card__image {
   opacity: 1;
   filter: none;
 }
@@ -312,10 +534,9 @@ input {
   object-fit: cover;
 }
 
+/* 02 §2.2 / §6.2：rating 色点属于信息条，右上角让位给状态角标 */
 .post-card__rating {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  flex: none;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -345,6 +566,13 @@ input {
   font-size: var(--text-xs);
 }
 
+/* 右下角：rating 色点 + 评分（02 §6.2） */
+.post-card__meta-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* 空态 / 错误态 */
 .state-view {
   display: flex;
@@ -364,6 +592,12 @@ input {
 }
 
 .state-view__description {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.state-view__guidance {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.6;
@@ -391,4 +625,180 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background-color: var(--bg-surface);
+}
+
+/* 应用导航：外壳任务（T-38~）落地前的最小页面切换 */
+.app-shell {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.app-nav {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6) 0;
+}
+
+.app-nav__item {
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.app-nav__item:hover {
+  color: var(--text-primary);
+}
+
+.app-nav__item[aria-pressed='true'] {
+  border-color: var(--primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* DR-039：代理回退直连的全局提示，不遮挡页面内容 */
+.app-network-alert {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-2) var(--space-6) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--warning);
+  font-size: var(--text-sm);
+}
+
+.app-network-alert__close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-network-alert__close:hover {
+  color: var(--text-primary);
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* T-22：页面常驻挂载，仅用 hidden 切换，保留各页状态并支持事件即时刷新 */
+.app-page {
+  height: 100%;
+}
+
+/* 02 §8：收藏页（按站点分组、标签筛选、排序） */
+.favorites-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  gap: var(--space-4);
+}
+
+.favorites-page__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.favorites-page__title h1 {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: 600;
+}
+
+.favorites-page__count {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.favorites-page__error {
+  margin: var(--space-1) 0 0;
+  color: var(--danger);
+  font-size: var(--text-xs);
+}
+
+.favorites-page__toolbar {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.site-tabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-inset);
+}
+
+.site-tabs__item {
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.site-tabs__item[aria-pressed='true'] {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.favorites-filter {
+  width: 220px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.favorites-filter:focus {
+  border-color: var(--primary);
+}
+
+.favorites-sort {
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.favorites-page__content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
 }

@@ -33,3 +33,9 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Bluu
   deleteAppDataOnUninstall: false
+
+# DR-066：自动更新使用 GitHub Release（生成 app-update.yml + latest.yml）
+publish:
+  provider: github
+  owner: LeDonX
+  repo: bluu-wallpaper

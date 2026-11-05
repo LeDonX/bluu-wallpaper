@@ -1,0 +1,33 @@
+/* 02 §6.2：18×18、圆角 4、半透明底；右上角横排，不随状态重排 */
+.stack {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 10; /* 02 §14.2 z-card-badge */
+  display: flex;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+
+.badge {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background-color: rgba(15, 17, 21, 0.72);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.badge[data-badge='viewed'] {
+  color: var(--muted);
+}
+
+.badge[data-badge='downloaded'] {
+  color: var(--success);
+}
+
+.badge[data-badge='favorited'] {
+  color: var(--warning);
+}

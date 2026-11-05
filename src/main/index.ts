@@ -2,6 +2,8 @@ import { join } from 'node:path';
 
 import { bootstrap, closeStorage, initStorage } from '@main/bootstrap';
 import { registerIpcHandlers } from '@main/ipc/registry';
+import { getConfigPath, readConfig } from '@main/network/hostmap';
+import { applyProxyConfig } from '@main/network/proxy';
 import {
   DEFAULT_WINDOW_SIZE,
   MIN_WINDOW_SIZE,
@@ -37,7 +39,11 @@ function createMainWindow(): void {
   });
 
   window.on('closed', () => {
-    if (mainWindow === window) mainWindow = null;
+    if (mainWindow !== window) return;
+    mainWindow = null;
+    // DR-060：konachan 的隐藏 CF 窗口一直存在，`window-all-closed` 不会触发，
+    // 关闭主窗口即视为退出应用（macOS 保持常驻）
+    if (process.platform !== 'darwin') app.quit();
   });
 
   // 外链一律不在应用内打开，交给系统浏览器
@@ -78,7 +84,7 @@ if (!hasSingleInstanceLock) {
     focusMainWindow();
   });
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     // 数据库迁移失败属于不可恢复错误，明确告知后退出，不静默降级
     try {
       initStorage();
@@ -90,6 +96,9 @@ if (!hasSingleInstanceLock) {
       app.quit();
       return;
     }
+
+    // DR-039：代理只能在 app ready 后应用；复检与探测不阻塞窗口创建
+    await applyProxyConfig(readConfig(getConfigPath()).network.proxy);
 
     app.setAppUserModelId('com.bluu.app');
     registerIpcHandlers();

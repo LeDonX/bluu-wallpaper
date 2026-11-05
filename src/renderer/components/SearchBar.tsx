@@ -10,19 +10,34 @@ const SUGGEST_DEBOUNCE_MS = 300;
 export interface SearchBarProps {
   site: SiteId;
   disabled: boolean;
+  /** DR-055：最近使用优先的搜索历史；为空时不展示下拉 */
+  history: readonly string[];
   onSubmit(query: string): void;
+  onSelectHistory(query: string): void;
+  onDeleteHistory(query: string): void;
+  onClearHistory(): void;
 }
 
 /**
- * 02 §2.1 / §3：单行输入 + 标签联想。
+ * 02 §2.1 / §3：单行输入 + 标签联想 + 搜索历史。
  * Tab 选中的联想项转成 chip，提交时与剩余输入合并成原站查询串；
  * 联想失败静默降级，不影响搜索本身。
  */
-export function SearchBar({ site, disabled, onSubmit }: SearchBarProps): ReactElement {
+export function SearchBar({
+  site,
+  disabled,
+  history,
+  onSubmit,
+  onSelectHistory,
+  onDeleteHistory,
+  onClearHistory
+}: SearchBarProps): ReactElement {
   const [draft, setDraft] = useState('');
   const [chips, setChips] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([]);
   const [highlight, setHighlight] = useState(-1);
+  // DR-055：聚焦且输入为空时才展示历史，避免与标签联想/已选 chip 叠加
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const timerRef = useRef<number | null>(null);
   // 请求序号用于丢弃过期联想结果，避免快速输入时旧响应覆盖新结果
@@ -80,6 +95,7 @@ export function SearchBar({ site, disabled, onSubmit }: SearchBarProps): ReactEl
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key === 'Escape') {
       cancelSuggest();
+      setHistoryOpen(false);
       return;
     }
     if (suggestions.length === 0) return;
@@ -104,11 +120,25 @@ export function SearchBar({ site, disabled, onSubmit }: SearchBarProps): ReactEl
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+    // 回车/点击搜索后立即收起联想与历史下拉，避免提交后浮层残留
+    cancelSuggest();
+    setHistoryOpen(false);
     const query = [...chips, draft.trim()].filter((part) => part !== '').join(' ');
     onSubmit(query);
   };
 
+  /** DR-055：点击历史项填入输入框并立即复用该查询 */
+  const selectHistory = (query: string): void => {
+    setDraft(query);
+    setChips([]);
+    cancelSuggest();
+    setHistoryOpen(false);
+    onSelectHistory(query);
+  };
+
   const showSuggestions = suggestions.length > 0;
+  const showHistory = historyOpen && !showSuggestions && draft.trim() === '' && chips.length === 0;
+  const showOverlay = showSuggestions || showHistory;
 
   return (
     <form className="search-bar" onSubmit={handleSubmit}>
@@ -140,15 +170,22 @@ export function SearchBar({ site, disabled, onSubmit }: SearchBarProps): ReactEl
             placeholder="输入标签、rating:s 或 score:>=100"
             aria-label="搜索标签"
             aria-autocomplete="list"
-            aria-expanded={showSuggestions}
+            aria-expanded={showOverlay}
             role="combobox"
             value={draft}
             onChange={(event: ChangeEvent<HTMLInputElement>) => {
               setDraft(event.target.value);
+              setHistoryOpen(false);
               scheduleSuggest(event.target.value);
             }}
             onKeyDown={handleKeyDown}
-            onBlur={cancelSuggest}
+            onFocus={() => {
+              if (history.length > 0) setHistoryOpen(true);
+            }}
+            onBlur={() => {
+              cancelSuggest();
+              setHistoryOpen(false);
+            }}
           />
 
           {showSuggestions ? (
@@ -178,6 +215,56 @@ export function SearchBar({ site, disabled, onSubmit }: SearchBarProps): ReactEl
                 </li>
               ))}
             </ul>
+          ) : null}
+
+          {showHistory ? (
+            <div className="search-history">
+              <div className="search-history__header">
+                <span className="search-history__title">搜索历史</span>
+                <button
+                  type="button"
+                  className="search-history__clear"
+                  // 阻止按下时输入框失焦，保证点击能落在按钮上
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                  }}
+                  onClick={onClearHistory}
+                >
+                  清空
+                </button>
+              </div>
+              <ul className="search-history__list" role="listbox" aria-label="搜索历史">
+                {history.map((item) => (
+                  <li className="search-history__item" key={item} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      className="search-history__query"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                      }}
+                      onClick={() => {
+                        selectHistory(item);
+                      }}
+                    >
+                      {item}
+                    </button>
+                    <button
+                      type="button"
+                      className="search-history__remove"
+                      aria-label={`删除历史 ${item}`}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                      }}
+                      onClick={() => {
+                        onDeleteHistory(item);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </div>
       </div>

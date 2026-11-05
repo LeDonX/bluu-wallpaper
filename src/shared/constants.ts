@@ -33,6 +33,8 @@ export const WINDOW_BACKGROUND_COLOR = '#0f1115';
 export const IMAGE_HOSTS: Readonly<Record<string, SiteId>> = {
   'assets.yande.re': 'yande',
   'files.yande.re': 'yande',
+  'konachan.com': 'konachan',
+  'assets.konachan.com': 'konachan',
   'files.konachan.com': 'konachan'
 };
 

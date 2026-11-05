@@ -1,0 +1,12 @@
+.section {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+}

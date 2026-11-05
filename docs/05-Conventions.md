@@ -95,8 +95,8 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: AppError };
 
 | code | UI 行为 |
 |---|---|
-| `NETWORK` / `TIMEOUT` | 重试 + 诊断入口 |
-| `RATE_LIMITED` | 自动退避，顶部温和提示 |
+| `NETWORK` / `TIMEOUT` | 重试 + 下一步引导（诊断入口随 T-34） |
+| `RATE_LIMITED` | 自动退避；达到重试上限后错误卡片提示"稍后重试"（不新增限流事件通道，07 DR-052） |
 | `CF_CHALLENGE` | 显示"正在验证"，失败转手动 |
 | `NOT_FOUND` | 标记失效，不重试 |
 | `DOWNLOAD` | 任务级失败，可单条重试 |

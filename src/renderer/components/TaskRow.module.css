@@ -1,0 +1,103 @@
+.row {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row[data-status='failed'] {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  flex: none;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.row[data-status='done'] .status {
+  color: var(--success);
+}
+
+.row[data-status='failed'] .status {
+  color: var(--danger);
+}
+
+.row[data-status='paused'] .status {
+  color: var(--warning);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.meta {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+.actionButton {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-inset);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.actionButton:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.actionButton[data-action='cancel']:hover:not(:disabled),
+.actionButton[data-action='delete']:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}

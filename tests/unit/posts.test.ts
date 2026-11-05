@@ -1,5 +1,12 @@
 import type { Post } from '@shared/models';
-import { mergePosts } from '@shared/posts';
+import {
+  advanceFillProgress,
+  filterUnviewed,
+  INITIAL_FILL_PROGRESS,
+  isAutoFillExhausted,
+  MAX_AUTO_FILL_PAGES,
+  mergePosts
+} from '@shared/posts';
 import { describe, expect, it } from 'vitest';
 
 const post = (id: number, site: Post['site'] = 'yande'): Post => ({
@@ -44,5 +51,55 @@ describe('mergePosts 翻页去重', () => {
 
     expect(merged).toHaveLength(2);
     expect(merged.map((item) => item.site)).toEqual(['yande', 'konachan']);
+  });
+});
+
+describe('filterUnviewed 隐藏已看（02 §6.3）', () => {
+  it('剔除已看项并保持原有顺序', () => {
+    const posts = [post(1), post(2), post(3), post(4)];
+
+    const visible = filterUnviewed(posts, new Set([2, 4]));
+
+    expect(visible.map((item) => item.id)).toEqual([1, 3]);
+  });
+
+  it('全部已看时返回空数组，关闭开关即可用原列表恢复', () => {
+    const posts = [post(1), post(2)];
+
+    expect(filterUnviewed(posts, new Set([1, 2]))).toEqual([]);
+    expect(filterUnviewed(posts, new Set())).toHaveLength(2);
+  });
+});
+
+describe('advanceFillProgress 连续补页统计（02 §6.3）', () => {
+  it('出现任一未看项即重置连续计数与跳过数', () => {
+    const previous = { streak: 3, skipped: 300 };
+
+    const next = advanceFillProgress(previous, 100, 99);
+
+    expect(next).toEqual(INITIAL_FILL_PROGRESS);
+  });
+
+  it('整页已看时累计连续次数与跳过数量', () => {
+    const next = advanceFillProgress({ streak: 1, skipped: 100 }, 100, 100);
+
+    expect(next).toEqual({ streak: 2, skipped: 200 });
+  });
+
+  it('空页视为结果耗尽，不改变已有进度', () => {
+    const previous = { streak: 2, skipped: 200 };
+
+    expect(advanceFillProgress(previous, 0, 0)).toEqual(previous);
+  });
+
+  it('连续 5 页无未看项时判定为补页耗尽', () => {
+    let progress = INITIAL_FILL_PROGRESS;
+    for (let index = 0; index < MAX_AUTO_FILL_PAGES; index += 1) {
+      progress = advanceFillProgress(progress, 100, 100);
+    }
+
+    expect(progress).toEqual({ streak: 5, skipped: 500 });
+    expect(isAutoFillExhausted(progress)).toBe(true);
+    expect(isAutoFillExhausted({ streak: 4, skipped: 400 })).toBe(false);
   });
 });

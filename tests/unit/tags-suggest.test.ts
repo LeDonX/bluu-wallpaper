@@ -48,7 +48,7 @@ describe('tags:suggest 入参校验', () => {
   it('非法 site 返回 CONFIG 且不查缓存/适配器', async () => {
     const { cache, finds } = createFakeCache();
     const { adapter, calls } = createFakeAdapter();
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'sankaku', prefix: 'hatsune' });
 
@@ -60,7 +60,7 @@ describe('tags:suggest 入参校验', () => {
   it('前缀少于 2 字符返回 CONFIG（02 §3）', async () => {
     const { cache } = createFakeCache();
     const { adapter, calls } = createFakeAdapter();
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'yande', prefix: 'h' });
 
@@ -73,7 +73,7 @@ describe('tags:suggest 本地优先与远端兜底', () => {
   it('本地命中时直接返回，不请求远端', async () => {
     const { cache } = createFakeCache([hatsune]);
     const { adapter, calls } = createFakeAdapter();
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'yande', prefix: 'HATSUNE' });
 
@@ -87,7 +87,7 @@ describe('tags:suggest 本地优先与远端兜底', () => {
       hatsune,
       { name: 'hatsune', type: 'character', count: 3 }
     ]);
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'yande', prefix: ' Hatsune ' });
 
@@ -102,7 +102,7 @@ describe('tags:suggest 本地优先与远端兜底', () => {
     const { adapter } = createFakeAdapter(async () => {
       throw new AppErrorException(createAppError('TIMEOUT', '请求超时'));
     });
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'yande', prefix: 'hatsune' });
 
@@ -110,10 +110,28 @@ describe('tags:suggest 本地优先与远端兜底', () => {
     expect(saved).toHaveLength(0);
   });
 
+  it('按入参站点选择适配器（DR-057）', async () => {
+    const { cache } = createFakeCache();
+    const yande = createFakeAdapter();
+    const konachan = createFakeAdapter(async () => [
+      { name: 'konachan_only', type: 'general', count: 1 }
+    ]);
+    const handler = createTagsSuggestHandler({
+      getAdapter: (site) => (site === 'konachan' ? konachan.adapter : yande.adapter),
+      cache
+    });
+
+    const result = await handler({ site: 'konachan', prefix: 'konachan' });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(yande.calls).toHaveLength(0);
+    expect(konachan.calls).toEqual([{ prefix: 'konachan', limit: 10 }]);
+  });
+
   it('远端空结果按空数组返回，且不写入缓存', async () => {
     const { cache, saved } = createFakeCache();
     const { adapter } = createFakeAdapter(async () => []);
-    const handler = createTagsSuggestHandler({ adapter, cache });
+    const handler = createTagsSuggestHandler({ getAdapter: () => adapter, cache });
 
     const result = await handler({ site: 'yande', prefix: 'zzz' });
 
