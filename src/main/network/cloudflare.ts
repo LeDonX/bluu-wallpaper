@@ -6,7 +6,7 @@ import { app, BrowserWindow } from 'electron';
 
 const DEFAULT_CLEARANCE_TIMEOUT_MS = 25_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 1_000;
+const POLL_INTERVAL_MS = 400;
 
 export interface CfChannelOptions {
   site: SiteId;
@@ -26,6 +26,8 @@ export interface CfChannel {
   getStatus(): CfStatus;
   /** 幂等：已有 cf_clearance 直接返回；并发调用共享同一次获取流程 */
   ensureClearance(): Promise<void>;
+  /** 启动预热：获取 clearance 并确保站点页已加载，首个业务请求无需再导航（DR-068） */
+  prewarm(): Promise<void>;
   /** 在隐藏窗口的页面上下文发起请求，串行执行（DR-010） */
   fetchText(path: string): Promise<CfResponse>;
   destroy(): void;
@@ -159,6 +161,11 @@ export function createCfChannel(options: CfChannelOptions): CfChannel {
     return acquiring;
   };
 
+  const prewarm = async (): Promise<void> => {
+    await ensureClearance();
+    await ensurePage();
+  };
+
   const requestInWindow = async (url: string): Promise<WindowFetchResult> => {
     const target = ensureWindow();
     const script = `fetch(${JSON.stringify(url)}, {
@@ -223,6 +230,7 @@ export function createCfChannel(options: CfChannelOptions): CfChannel {
     site: options.site,
     getStatus: () => status,
     ensureClearance,
+    prewarm,
     fetchText,
     destroy
   };

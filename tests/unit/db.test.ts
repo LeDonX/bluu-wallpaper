@@ -62,6 +62,8 @@ describeWithSqlite('SQLite 迁移 001', () => {
       'posts',
       'schema_migrations',
       'search_history',
+      'subscription_posts',
+      'subscriptions',
       'tag_cache'
     ]);
 
@@ -85,7 +87,8 @@ describeWithSqlite('SQLite 迁移 001', () => {
       'score',
       'tags_json',
       'created_at',
-      'cached_at'
+      'cached_at',
+      'source'
     ]);
   });
 
@@ -100,6 +103,8 @@ describeWithSqlite('SQLite 迁移 001', () => {
       'posts',
       'schema_migrations',
       'search_history',
+      'subscription_posts',
+      'subscriptions',
       'tag_cache'
     ]);
   });

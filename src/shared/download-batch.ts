@@ -1,4 +1,4 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import type {
   DownloadEnqueueInput,
   DownloadEnqueueResult
@@ -68,7 +68,7 @@ export type EnqueueDownloads = (
  */
 export async function enqueueDownloadBatch(
   posts: readonly Post[],
-  site: SiteId,
+  site: AnySiteId,
   enqueue: EnqueueDownloads
 ): Promise<DownloadBatchSummary> {
   const summary: DownloadBatchSummary = {

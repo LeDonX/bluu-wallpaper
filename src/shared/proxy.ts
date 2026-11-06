@@ -1,7 +1,7 @@
 import { isValidHostname, isValidIPv4 } from '@shared/hostmap';
 
-/** 03 §4.5：代理模式，直连不生成规则串 */
-export const PROXY_MODES = ['direct', 'http', 'socks5'] as const;
+/** 03 §4.5：代理模式；`direct` / `system` 不生成固定规则串（DR-078） */
+export const PROXY_MODES = ['direct', 'system', 'http', 'socks5'] as const;
 
 export type ProxyMode = (typeof PROXY_MODES)[number];
 
@@ -73,12 +73,17 @@ export function parseNetworkConfig(raw: unknown): NetworkConfig {
 }
 
 /**
- * 生成 Electron `setProxy({ proxyRules })` 的规则串；直连返回空串。
+ * 生成 Electron `setProxy({ proxyRules })` 的规则串；直连与跟随系统返回空串。
  * 地址非法时同样返回空串，交由 `judgeProxyFallback` 判定为"地址无效"并回退。
  */
 export function buildProxyRules(config: ProxyConfig): string {
   const host = config.host.trim();
-  if (config.mode === 'direct' || !isValidProxyHost(host) || !isValidProxyPort(config.port)) {
+  if (
+    config.mode === 'direct' ||
+    config.mode === 'system' ||
+    !isValidProxyHost(host) ||
+    !isValidProxyPort(config.port)
+  ) {
     return '';
   }
   const scheme = config.mode === 'socks5' ? 'socks5' : 'http';
@@ -114,9 +119,13 @@ export interface ProxyDecision {
   reason: string | null;
 }
 
-/** 纯函数：判断应用代理后是否需要回退直连，以及展示给用户的原因（DR-039） */
+/**
+ * 纯函数：判断应用代理后是否需要回退直连，以及展示给用户的原因（DR-039）。
+ * 跟随系统（DR-078）不回退：系统代理关闭时 `DIRECT` 属正常状态，回退会覆盖用户意图。
+ */
 export function judgeProxyFallback(input: ProxyCheckInput): ProxyDecision {
   if (input.mode === 'direct') return { fallback: false, reason: null };
+  if (input.mode === 'system') return { fallback: false, reason: null };
   if (!input.rulesValid) return { fallback: true, reason: '代理地址无效，已回退直连' };
   if (input.resolution === null) return { fallback: true, reason: '代理规则未生效，已回退直连' };
   if (input.resolution === 'direct') {
@@ -132,6 +141,7 @@ export function judgeProxyFallback(input: ProxyCheckInput): ProxyDecision {
 /** 渲染层与设置页共用的模式文案 */
 export const PROXY_MODE_LABELS: Record<ProxyMode, string> = {
   direct: '直连',
+  system: '跟随系统',
   http: 'HTTP 代理',
   socks5: 'SOCKS5 代理'
 };

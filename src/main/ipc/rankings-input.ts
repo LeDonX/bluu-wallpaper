@@ -1,4 +1,4 @@
-import { SITE_IDS } from '@shared/constants';
+import { ALL_SITE_IDS } from '@shared/constants';
 import { AppErrorException, createAppError } from '@shared/errors';
 import type { PostsRankingsInput } from '@shared/ipc-contract';
 import { RANKING_KINDS } from '@shared/rankings';
@@ -13,7 +13,7 @@ const rankingDateSchema = z.object({
 
 const rankingsInputSchema = z
   .object({
-    site: z.enum(SITE_IDS),
+    site: z.enum(ALL_SITE_IDS),
     kind: z.enum(RANKING_KINDS),
     date: rankingDateSchema.optional(),
     page: z.number().int().min(1).optional()

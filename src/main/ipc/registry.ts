@@ -1,8 +1,13 @@
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { getDatabase } from '@main/bootstrap';
+import { resolveHost, tcpProbe, tlsProbe } from '@main/diagnostics/probes';
+import { createDiagnosticsService } from '@main/diagnostics/service';
 import { createDestinationGuard, isUsableDirectory } from '@main/download/destination';
 import { createDownloadQueue, type DownloadTransport } from '@main/download/queue';
+import { createDailyListHandler } from '@main/ipc/handlers/daily-list';
+import { createDiagRunHandler } from '@main/ipc/handlers/diag-run';
 import { createDownloadsClearHandler } from '@main/ipc/handlers/downloads-clear';
 import { createDownloadsControlHandler } from '@main/ipc/handlers/downloads-control';
 import { createDownloadsDeleteHandler } from '@main/ipc/handlers/downloads-delete';
@@ -11,6 +16,12 @@ import { createDownloadsListHandler } from '@main/ipc/handlers/downloads-list';
 import { createDownloadsRevealHandler } from '@main/ipc/handlers/downloads-reveal';
 import { createFavoritesListHandler } from '@main/ipc/handlers/favorites-list';
 import { createFavoritesToggleHandler } from '@main/ipc/handlers/favorites-toggle';
+import { createFollowsAddHandler } from '@main/ipc/handlers/follows-add';
+import { createFollowsListHandler } from '@main/ipc/handlers/follows-list';
+import { createFollowsMarkReadHandler } from '@main/ipc/handlers/follows-mark-read';
+import { createFollowsRefreshHandler } from '@main/ipc/handlers/follows-refresh';
+import { createFollowsRemoveHandler } from '@main/ipc/handlers/follows-remove';
+import { createFollowsTimelineHandler } from '@main/ipc/handlers/follows-timeline';
 import { createImagesFetchHandler } from '@main/ipc/handlers/images-fetch';
 import { createPostsRankingsHandler } from '@main/ipc/handlers/posts-rankings';
 import { createPostsSearchHandler } from '@main/ipc/handlers/posts-search';
@@ -26,24 +37,31 @@ import { createViewsClearHandler } from '@main/ipc/handlers/views-clear';
 import { createViewsListHandler } from '@main/ipc/handlers/views-list';
 import { createViewsMarkHandler } from '@main/ipc/handlers/views-mark';
 import { getConfigPath, readConfig, writeConfig } from '@main/network/hostmap';
+import { getHttpClient } from '@main/network/http-site';
 import type { ImageTransport } from '@main/network/image-loader';
 import { applyProxyConfig, getProxyStatus, onProxyStatusChange } from '@main/network/proxy';
 import { getSession } from '@main/network/sessions';
-import { getSiteAdapter } from '@main/sites/adapters';
+import { getSiteAdapter, setProviderKeySource } from '@main/sites/adapters';
+import { createMoebooruAdapter } from '@main/sites/moebooru';
 import { createDownloadsStore } from '@main/storage/downloads';
 import { createFavoritesStore } from '@main/storage/favorites';
 import { createHistoryStore } from '@main/storage/history';
 import { createSearchHistoryStore } from '@main/storage/search-history';
+import { createSubscriptionsStore } from '@main/storage/subscriptions';
 import { createTagCache } from '@main/storage/tags';
 import { createViewsStore } from '@main/storage/views';
+import { createSubscriptionService, type SubscriptionService } from '@main/subscriptions/service';
 import { createUpdateService, type UpdateUpdater } from '@main/update/service';
+import { CF_CLEARANCE_COOKIE } from '@shared/cf';
 import { imageHostSite } from '@shared/constants';
 import type { DownloadProgressEvent } from '@shared/downloads';
 import {
+  type FollowsUpdatedEvent,
   IPC_CHANNELS,
   type SettingsDestinationChangedEvent,
   type ViewsUpdatedEvent
 } from '@shared/ipc-contract';
+import { FOLLOW_REFRESH_LIMIT } from '@shared/subscriptions';
 import type { UpdateState } from '@shared/updates';
 import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions,shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
@@ -75,6 +93,9 @@ async function pickDownloadDirectory(current: string): Promise<string | null> {
   return result.filePaths[0] ?? null;
 }
 
+/** DR-069：注册时保存服务实例，供启动自动刷新复用 */
+let subscriptionServiceRef: SubscriptionService | null = null;
+
 /** 主进程 IPC 注册入口；新增 channel 需同步 03 §7 契约表（05 §5） */
 export function registerIpcHandlers(): void {
   // DR-039：代理状态变化（如探测到不可达后回退）广播给所有窗口
@@ -86,6 +107,10 @@ export function registerIpcHandlers(): void {
     }
   });
   ipcMain.handle(IPC_CHANNELS.networkStatus, () => ({ ok: true, data: getProxyStatus() }));
+
+  // T-50：wallhaven 每次请求读取最新 API key，设置保存后立即生效
+  const configPath = getConfigPath();
+  setProviderKeySource(() => readConfig(configPath).providers);
 
   const searchPosts = createPostsSearchHandler({
     // 07 DR-057：按入参站点路由到 yande / konachan 适配器
@@ -101,6 +126,7 @@ export function registerIpcHandlers(): void {
     isExplicitAllowed: () => readConfig(getConfigPath()).content.allowExplicit,
     getBlacklist: () => readConfig(getConfigPath()).content.blacklist
   });
+  const listDaily = createDailyListHandler({ getAdapter: getSiteAdapter });
   const suggestTags = createTagsSuggestHandler({
     getAdapter: getSiteAdapter,
     cache: createTagCache(getDatabase())
@@ -119,9 +145,59 @@ export function registerIpcHandlers(): void {
   const favorites = createFavoritesStore(getDatabase());
   const toggleFavorite = createFavoritesToggleHandler(favorites);
   const listFavorites = createFavoritesListHandler(favorites);
-  const configPath = getConfigPath();
   const defaultDownloadDir = join(app.getPath('userData'), 'downloads');
   const initialSettings = readConfig(configPath);
+  // 07 DR-069：关注刷新的每关注 limit 固定 20，避免与搜索共用 100 条的缓存适配器
+  const subscriptionService = createSubscriptionService({
+    store: createSubscriptionsStore(getDatabase()),
+    fetchLatest: async (site, query) => {
+      const adapter = createMoebooruAdapter({
+        site,
+        client: getHttpClient(site),
+        pageLimit: FOLLOW_REFRESH_LIMIT
+      });
+      return (await adapter.search(query)).posts;
+    },
+    isExplicitAllowed: () => readConfig(configPath).content.allowExplicit,
+    getBlacklist: () => readConfig(configPath).content.blacklist,
+    onUpdated: ({ site }) => {
+      const event: FollowsUpdatedEvent = { site };
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.followsUpdated, event);
+      }
+    }
+  });
+  subscriptionServiceRef = subscriptionService;
+  const listFollows = createFollowsListHandler(subscriptionService);
+  const addFollow = createFollowsAddHandler(subscriptionService);
+  const removeFollow = createFollowsRemoveHandler(subscriptionService);
+  const getFollowTimeline = createFollowsTimelineHandler(subscriptionService);
+  const refreshFollows = createFollowsRefreshHandler(subscriptionService);
+  const markFollowsRead = createFollowsMarkReadHandler(subscriptionService);
+  // T-34 / DR-067：诊断由主进程执行，渲染层只经 `diag:run` 取报告
+  const diagnostics = createDiagnosticsService({
+    readHostmap: () => readConfig(configPath).hostmap,
+    getProxyStatus,
+    hasClearance: async (site) => {
+      const cookies = await getSession(site).cookies.get({ name: CF_CLEARANCE_COOKIE });
+      return cookies.length > 0;
+    },
+    resolveHost,
+    tcpProbe,
+    tlsProbe,
+    getDownloadDir: () => readConfig(configPath).downloads.destinationDir,
+    defaultDownloadDir,
+    isUsableDirectory,
+    prepareDirectory: (path) => {
+      try {
+        mkdirSync(path, { recursive: true });
+      } catch {
+        return false;
+      }
+      return isUsableDirectory(path);
+    }
+  });
+  const runDiagnostics = createDiagRunHandler(diagnostics);
   /** DR-063：队列在写盘失败时回调此槽位，实际处理函数在队列创建后接线 */
   const destinationRepair: { request: (() => Promise<string | null>) | null } = { request: null };
   const downloads = createDownloadQueue({
@@ -248,6 +324,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.postsSearch, (_event, raw: unknown) => searchPosts(raw));
   ipcMain.handle(IPC_CHANNELS.postsRankings, (_event, raw: unknown) => listRankings(raw));
+  ipcMain.handle(IPC_CHANNELS.dailyList, (_event, raw: unknown) => listDaily(raw));
   ipcMain.handle(IPC_CHANNELS.tagsSuggest, (_event, raw: unknown) => suggestTags(raw));
   ipcMain.handle(IPC_CHANNELS.viewsMark, (_event, raw: unknown) => markViews(raw));
   ipcMain.handle(IPC_CHANNELS.viewsList, (_event, raw: unknown) => listViews(raw));
@@ -264,6 +341,12 @@ export function registerIpcHandlers(): void {
   });
   ipcMain.handle(IPC_CHANNELS.favoritesToggle, (_event, raw: unknown) => toggleFavorite(raw));
   ipcMain.handle(IPC_CHANNELS.favoritesList, (_event, raw: unknown) => listFavorites(raw));
+  ipcMain.handle(IPC_CHANNELS.followsList, (_event, raw: unknown) => listFollows(raw));
+  ipcMain.handle(IPC_CHANNELS.followsAdd, (_event, raw: unknown) => addFollow(raw));
+  ipcMain.handle(IPC_CHANNELS.followsRemove, (_event, raw: unknown) => removeFollow(raw));
+  ipcMain.handle(IPC_CHANNELS.followsTimeline, (_event, raw: unknown) => getFollowTimeline(raw));
+  ipcMain.handle(IPC_CHANNELS.followsRefresh, (_event, raw: unknown) => refreshFollows(raw));
+  ipcMain.handle(IPC_CHANNELS.followsMarkRead, (_event, raw: unknown) => markFollowsRead(raw));
   ipcMain.handle(IPC_CHANNELS.downloadsEnqueue, (_event, raw: unknown) => enqueueDownloads(raw));
   ipcMain.handle(IPC_CHANNELS.downloadsControl, (_event, raw: unknown) => controlDownload(raw));
   ipcMain.handle(IPC_CHANNELS.downloadsReveal, (_event, raw: unknown) => revealDownload(raw));
@@ -287,6 +370,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.updatesCheck, () => updates.check());
   ipcMain.handle(IPC_CHANNELS.updatesDownload, () => updates.download());
   ipcMain.handle(IPC_CHANNELS.updatesInstall, () => updates.install());
+  ipcMain.handle(IPC_CHANNELS.diagRun, (_event, raw: unknown) => runDiagnostics(raw));
   ipcMain.handle(IPC_CHANNELS.imagesFetch, (event, raw: unknown) =>
     fetchImage(raw, (progress) => {
       if (!event.sender.isDestroyed()) {
@@ -294,4 +378,16 @@ export function registerIpcHandlers(): void {
       }
     })
   );
+}
+
+/**
+ * 07 DR-069：启动后延迟刷新关注（由 `main/index.ts` 调用）。
+ * 无关注时直接返回；失败静默，关注页仍可手动刷新。
+ */
+export function refreshFollowsOnStartup(): void {
+  const service = subscriptionServiceRef;
+  if (service === null) return;
+  void service.refreshAll().catch(() => {
+    // 启动刷新失败不打扰用户
+  });
 }

@@ -1,4 +1,4 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 
 import { type SqlDatabase, withTransaction } from './db';
 
@@ -10,7 +10,7 @@ export interface HistoryClearCounts {
 
 export interface HistoryStore {
   /** 清除已看与收藏；`site` 缺省表示全部站点。只删记录表，保留 `posts` 快照与 `tag_cache` */
-  clear(site?: SiteId): HistoryClearCounts;
+  clear(site?: AnySiteId): HistoryClearCounts;
 }
 
 interface CountRow {
@@ -29,7 +29,7 @@ export function createHistoryStore(database: SqlDatabase): HistoryStore {
     deleteFavoritesAll: database.prepare('DELETE FROM favorites')
   };
 
-  const countOf = (statement: { get(...params: unknown[]): unknown }, site?: SiteId): number => {
+  const countOf = (statement: { get(...params: unknown[]): unknown }, site?: AnySiteId): number => {
     const row = (
       site === undefined ? statement.get() : statement.get(site)
     ) as CountRow | undefined;

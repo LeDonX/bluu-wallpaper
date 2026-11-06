@@ -1,6 +1,7 @@
 import type { DownloadProgressEvent } from '@shared/downloads';
 import type {
   BooruApi,
+  FollowsUpdatedEvent,
   ImageProgress,
   SettingsDestinationChangedEvent,
   ViewsUpdatedEvent
@@ -17,6 +18,7 @@ const api: BooruApi = {
   arch: process.arch,
   searchPosts: (input) => ipcRenderer.invoke(IPC_CHANNELS.postsSearch, input),
   listRankings: (input) => ipcRenderer.invoke(IPC_CHANNELS.postsRankings, input),
+  listDaily: (input) => ipcRenderer.invoke(IPC_CHANNELS.dailyList, input),
   suggestTags: (input) => ipcRenderer.invoke(IPC_CHANNELS.tagsSuggest, input),
   loadImage: (input) => ipcRenderer.invoke(IPC_CHANNELS.imagesFetch, input),
   onImageProgress: (listener) => {
@@ -42,6 +44,21 @@ const api: BooruApi = {
   },
   toggleFavorite: (input) => ipcRenderer.invoke(IPC_CHANNELS.favoritesToggle, input),
   listFavorites: (input) => ipcRenderer.invoke(IPC_CHANNELS.favoritesList, input),
+  listFollows: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsList, input),
+  addFollow: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsAdd, input),
+  removeFollow: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsRemove, input),
+  getFollowTimeline: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsTimeline, input),
+  refreshFollows: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsRefresh, input),
+  markFollowsRead: (input) => ipcRenderer.invoke(IPC_CHANNELS.followsMarkRead, input),
+  onFollowsUpdated: (listener) => {
+    const handler = (_event: IpcRendererEvent, event: FollowsUpdatedEvent): void => {
+      listener(event);
+    };
+    ipcRenderer.on(IPC_CHANNELS.followsUpdated, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.followsUpdated, handler);
+    };
+  },
   enqueueDownloads: (input) => ipcRenderer.invoke(IPC_CHANNELS.downloadsEnqueue, input),
   controlDownload: (input) => ipcRenderer.invoke(IPC_CHANNELS.downloadsControl, input),
   revealDownload: (input) => ipcRenderer.invoke(IPC_CHANNELS.downloadsReveal, input),
@@ -87,6 +104,7 @@ const api: BooruApi = {
       ipcRenderer.removeListener(IPC_CHANNELS.updatesStatus, handler);
     };
   },
+  runDiagnostics: (input) => ipcRenderer.invoke(IPC_CHANNELS.diagRun, input),
   onNetworkStatus: (listener) => {
     const handler = (_event: IpcRendererEvent, status: ProxyStatus): void => {
       listener(status);

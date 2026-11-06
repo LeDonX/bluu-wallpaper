@@ -16,6 +16,8 @@ export interface PostGridProps {
   viewedIds: ReadonlySet<number>;
   /** T-21：★ 角标数据源，与已看集合独立 */
   favoritedIds: ReadonlySet<number>;
+  /** DR-069：关注动态未读集合，命中时卡片右上角显示红点 */
+  unreadIds?: ReadonlySet<number>;
   /** T-27 / DR-039：多选键集合；仅在开启多选（传入 onToggleSelect）时渲染勾选框 */
   selectedKeys?: ReadonlySet<string>;
   loading: boolean;
@@ -37,6 +39,7 @@ export function PostGrid({
   posts,
   viewedIds,
   favoritedIds,
+  unreadIds,
   selectedKeys,
   loading,
   onNearEnd,
@@ -116,6 +119,7 @@ export function PostGrid({
                   post={post}
                   viewed={viewedIds.has(post.id)}
                   favorited={favoritedIds.has(post.id)}
+                  unread={unreadIds?.has(post.id) === true}
                   selected={selectedKeys?.has(postSelectionKey(post)) === true}
                   onToggleFavorite={onToggleFavorite}
                   onToggleSelect={onToggleSelect}
@@ -127,11 +131,14 @@ export function PostGrid({
           );
         })}
       </div>
-      {loading ? (
-        <div className="post-grid__loading" role="status">
-          正在加载更多…
-        </div>
-      ) : null}
+      {/* DR-090：固定高度加载槽常驻占位，加载文案只切换内容，避免触底时滚动区域高度变化导致列表抖动 */}
+      <div
+        className="post-grid__loading"
+        data-loading={loading ? 'true' : 'false'}
+        role="status"
+      >
+        {loading ? '正在加载更多…' : ''}
+      </div>
     </div>
   );
 }

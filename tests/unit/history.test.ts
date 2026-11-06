@@ -104,8 +104,9 @@ describeWithSqlite('清除浏览记录（T-22 / DR-033）', () => {
 
     expect(countRows('posts')).toBe(postsBefore);
     expect(countRows('tag_cache')).toBe(1);
-    // 迁移 005 追加 md5 列（DR-037）、迁移 006 建搜索历史（DR-055）
-    expect(countRows('schema_migrations')).toBe(6);
+    // 迁移 005 追加 md5 列（DR-037）、006 建搜索历史（DR-055）、007 建关注（DR-069）、
+    // 008 追加 posts.source（T-53）、009 清理 pexels 残留数据
+    expect(countRows('schema_migrations')).toBe(9);
   });
 
   it('重复清除幂等：第二次返回 0 且不报错', () => {

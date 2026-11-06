@@ -6,11 +6,7 @@ import { join } from 'node:path';
 import { applyMigrations, type SqlDatabase } from '@main/storage/db';
 import { createFavoritesStore } from '@main/storage/favorites';
 import { createViewsStore } from '@main/storage/views';
-import {
-  type FavoriteEntry,
-  matchesFavoriteQuery,
-  sortFavoriteEntries
-} from '@shared/favorites';
+import { type FavoriteEntry, matchesFavoriteQuery, sortFavoriteEntries } from '@shared/favorites';
 import type { Post } from '@shared/models';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -108,6 +104,15 @@ describeWithSqlite('favorites 存取（T-21）', () => {
     expect(typeof entries[0]?.addedAt).toBe('number');
   });
 
+  it('收藏快照保留来源/署名（T-53 迁移 008）', () => {
+    const store = createFavoritesStore(database);
+    const source = 'Jane Doe（https://example.com/@jane-doe）';
+    const post = makePost(11, { site: 'bing', source });
+
+    expect(store.toggle('bing', post)).toBe(true);
+    expect(store.list('bing')[0]?.post.source).toBe(source);
+  });
+
   it('再次切换取消收藏，列表清空', () => {
     const store = createFavoritesStore(database);
     const post = makePost(42);
@@ -148,7 +153,11 @@ describeWithSqlite('favorites 存取（T-21）', () => {
 
     database = new (DatabaseSync as DatabaseSyncConstructor)(filePath);
     expect(applyMigrations(database)).toBe(0);
-    expect(createFavoritesStore(database).list('yande').map((entry) => entry.post.id)).toEqual([9]);
+    expect(
+      createFavoritesStore(database)
+        .list('yande')
+        .map((entry) => entry.post.id)
+    ).toEqual([9]);
   });
 });
 
@@ -156,7 +165,13 @@ describe('收藏筛选与排序（02 §8）', () => {
   const entries: FavoriteEntry[] = [
     { post: makePost(1, { score: 5, tags: [{ name: 'alpha', type: 'general' }] }), addedAt: 100 },
     {
-      post: makePost(2, { score: 20, tags: [{ name: 'alpha', type: 'general' }, { name: 'beta', type: 'general' }] }),
+      post: makePost(2, {
+        score: 20,
+        tags: [
+          { name: 'alpha', type: 'general' },
+          { name: 'beta', type: 'general' }
+        ]
+      }),
       addedAt: 300
     },
     { post: makePost(3, { score: 20, tags: [{ name: 'beta', type: 'general' }] }), addedAt: 200 }

@@ -7,6 +7,7 @@ import {
   downloadTaskTitle,
   formatByteSize
 } from '@shared/downloads';
+import { SITE_LABELS } from '@shared/sites';
 import type { ReactElement } from 'react';
 
 import { ProgressBar } from './ProgressBar';
@@ -52,7 +53,7 @@ export function TaskRow({ task, busy, onAction, onReveal, onDelete }: TaskRowPro
 
       <div className={styles.footer}>
         <span className={styles.meta}>
-          {task.site} · #{task.postId} · {sizeLabel}
+          {SITE_LABELS[task.site]} · #{task.postId} · {sizeLabel}
         </span>
         <span className={styles.actions}>
           <button

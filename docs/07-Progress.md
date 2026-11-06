@@ -1,9 +1,9 @@
-# Bluu（蓝噗）进度与协作看板
+# LePic 进度与协作看板
 
 | 项 | 内容 |
 |---|---|
 | 版本 | v0.1 |
-| 更新日期 | 2026-11-05 |
+| 更新日期 | 2026-11-06 |
 | 维护规则 | **每个会话开始先读本文件，结束前必须更新** |
 
 ---
@@ -111,10 +111,33 @@
 
 | ID | 任务 | 状态 |
 |---|---|---|
-| T-34 | 诊断页 | todo |
+| T-34 | 诊断页 | done | 2026-11-06/70：新增 `diag:run`（`{site}` → `Result<DiagReport>`）与主进程六项诊断（DNS/TCP/TLS/代理/CF/磁盘）；诊断页支持站点切换、逐项状态/建议/耗时与复制报告（DR-067）；真实网络与窗口观感待 P-34 人工验证 |
 | T-35 | 自动更新 | done | 2026-11-05/69：新增 `electron-updater` 与 `main/update/service.ts` 状态机，设置页「关于与更新」手动检查/下载/重启安装；仅 NSIS 安装版（开发模式与便携版返回 `unsupported`），`autoDownload=false`、`autoInstallOnAppQuit=true`；`electron-builder.yml` 增加 `publish.provider=github`（DR-066）；TC-45 真机升级待验证 |
 | T-36 | 搜索历史 | done · 2026-11-05/59 |
 | T-37 | 标签黑名单 | done | 2026-11-05/60：`Settings.content` 持久化 + 搜索拼接 `-tag`（与显式 `-tag` 去重）+ 榜单本地过滤 + 设置页编辑与提示（DR-056）；konachan 真实生效随 T-28；P-26 待人工目视 |
+| T-46 | konachan 首访优化 | done | 2026-11-06/71：app ready 后后台预热 CF 通道（`prewarmKonachan()`）、cookie 轮询 1s→400ms、搜索/榜单首屏显示 Cloudflare 验证提示（DR-068）；P-35 待人工验证 |
+| T-47 | 关注动态 | done | 2026-11-06/72、74：收藏页新增「关注动态」子页签，支持关注任意标签/画师、启动与手动刷新、未读红点与计数（DR-069）；最初的聚合/分组视图已由 T-55 改为时间轴/标签（DR-072）；会话 72 实施、会话 74 收尾，lint / typecheck / test 全绿；P-36 待人工验证 |
+| T-55 | 关注动态浏览改版 | done | 2026-11-06/76：时间轴按日期分组展示当日新增作品，标签页每个关注只占一行 + 宽度自适应 + 查看更多/收起（DR-072）；lint / typecheck / test 全绿；P-36 补人工确认项 |
+| T-56 | 系统代理跟随模式 | done | 2026-11-06/84：代理新增 `system`（跟随系统），映射 Electron `setProxy({mode:'system'})` 读取 Windows 系统代理，免填端口；默认仍 `direct`，`system` 不做不可达回退（DR-078）；lint / typecheck / test 全绿；P-40 待窗口内验证 |
+| T-57 | 慢请求期间允许切站 | done | 2026-11-06/85：搜索页站点 tab 不再因 loading 置灰，切站递增请求序号作废在途响应并立即放开 loading（DR-079）；修复 wallhaven 直连悬挂时无法切回 yande / konachan；lint / typecheck / test 全绿；P-41 待窗口内验证 |
+| T-58 | 空查询首页与切站切换视图 | done | 2026-11-06/89：空查询按能力表加载站点首页（yande/konachan 24h 热门单页、wallhaven 24h toplist），启动即加载默认站点首页；切站按普通页面切换处理，丢弃上一站点列表并回到新站点首页，不自动重搜旧关键词（DR-085 / DR-086 / DR-087）；lint / typecheck / test 全绿；P-43 待窗口内验证 |
+| T-59 | 榜单并入首页 | done | 2026-11-06/90：删除独立榜单页与导航项，导航收敛为六页；首页工具条新增热门/日/周/月与日期（仅 `rankings` 站点），默认热门即启动首页，提交关键词后隐藏、清空回车恢复；移除 App 层 `externalQuery` 与 `RankingPage`（DR-088）；lint / typecheck / test 全绿；P-44 待窗口内验证 |
+| T-60 | 诊断并入设置 | done | 2026-11-06/91：删除独立诊断页与导航项，导航收敛为五页；诊断 UI 组件化为 `components/DiagnosticsPanel`（含样式模块），作为设置页末端「诊断」分组，保留站点切换、六项检测、逐项建议/耗时与复制报告（DR-089）；lint / typecheck / test 全绿；P-45 待窗口内验证 |
+| T-61 | 首页翻页到底与加载条抖动修复 | done | 2026-11-06/92：追页失败后暂停触底自动重试（保留错误条与「重试」，手动重试解锁）；合并后无新增条目即停止追页；底部加载提示改为固定高度常驻槽位、不再 sticky 覆盖末行（DR-090）；lint / typecheck / test 全绿；P-46 待窗口内验证 |
+| T-62 | 榜单期选择与默认期 | done | 2026-11-06/93：日榜保留日期选择器，周榜改为「年 + 周数」（ISO 8601，请求取该周周一日期），月榜改为「年 + 月份」；切换榜类默认上一个完整周期（昨天 / 上周 / 上月），当年只到当前周/月；计数行显示当前期（DR-091）；lint / typecheck / test 全绿；P-47 待窗口内验证 |
+| T-63 | 期榜返回量与翻页 | done | 2026-11-06/94：实测 `popular_by_day/week/month` 固定返回 40 条且忽略 `limit`/`page`，期榜端点改为 `/post.json?tags=date:<单日或区间> order:score&limit=100&page=N`（日=单日、周=周一..周日、月=1日..月末）；同步更新单测与 02/03/06/09 文档（DR-092）；lint / typecheck / test 全绿；P-48 待窗口内验证 |
+
+### M6 多源壁纸接入（规划）
+
+| ID | 任务 | 状态 | 会话 | 备注 |
+|---|---|---|---|---|
+| T-48 | 多源适配架构 | done | 2026-11-06/75 | 能力表 `SITE_CAPABILITIES`（4 站）+ `SiteAdapter`（search 必选、rankings/suggestTags 可选）+ 第三方站点走普通 `ses.fetch` + 下载 `{md5}` 回退 `site_id` + 图片域名/CSP（DR-070）；界面入口隐藏归 T-53；lint / typecheck / test 全绿 |
+| T-49 | 图库服务密钥设置 | done | 2026-11-06/77 | `Settings.providers` 持久化 wallhaven key；设置页「图库服务」掩码编辑 + 未配置状态；保存前 trim、非空 key 校验且报错不回显密钥（DR-071）；lint / typecheck / test 全绿 |
+| T-50 | wallhaven 接入 | done | 2026-11-06/78 | 新增 `main/sites/wallhaven.ts`（`/api/v1/search` + `X-API-Key`，R18→purity、1080P+→atleast、排序/page，401→CONFIG、429→RATE_LIMITED）；`Post`/收藏/已看/下载与搜索类 IPC 站点标识扩到 `AnySiteId`；同日提前落地 T-53 的 wallhaven 搜索与收藏入口（未配置 key 置灰）；lint / typecheck / test 全绿（DR-073）；P-37 待人工验证 |
+| T-51 | pexels 接入（已取消） | cancelled | 2026-11-06/80 | 原实现已在会话 80 完成（DR-075），会话 88 因 pexels 不再开放 API 申请整体移除（DR-084）；P-38 关闭 |
+| T-52 | Bing 每日壁纸页 | done | 2026-11-06/81 | 新增 `main/sites/bing.ts`（`HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN`，`urlbase` 拼 400x240 预览与 1920x1080 原图，`enddate` 作 id 与本地零点 `createdAt`，版权文案写入 `source`）；新增 `daily:list` IPC（入参 `{site}` + zod 校验 + 能力缺失 CONFIG）与独立「每日壁纸」页（8 张卡片日期倒序、查看器复用查看与下载、首次激活才请求）；`SITE_CAPABILITIES` 增加 `daily` 能力位驱动导航入口（DR-076）；11 条适配器单测 + 4 条 handler 单测；lint / typecheck / test 全绿；P-39 待人工验证 |
+| T-53 | 多源 UI 收尾 | done | 2026-11-06/82 | 能力表驱动搜索/榜单/收藏/每日入口、最小分辨率筛选、空查询热门、收藏页含 wallhaven/bing、posts 快照补 source、1024 宽导航换行；DR-077（pexels 分支后于 DR-084 移除） |
+| T-54 | 测试与文档同步 | done | 2026-11-06/83 | 09/06/02/03 已补两站契约、fixtures、TC-49~TC-52 与能力表；lint/typecheck/test 全绿 |
 
 ---
 
@@ -122,6 +145,18 @@
 
 | ID | 决策 | 理由 | 影响 |
 |---|---|---|---|
+| DR-092 | T-63 期榜返回量与翻页：`buildRankingPath` 只在热门保留 `/post/popular_recent.json?period=1d`；日/周/月榜改为 `/post.json?tags=<date 表达式> order:score&limit=100&page=N`，其中日榜为 `date:YYYY-MM-DD`，周榜按 ISO 周取周一至周日的区间 `date:<周一>..<周日>`，月榜为 `date:<1日>..<月末>`（月末按实际天数）；`buildRankingPath` 内部用 `rankingDateRange` 归一化，周榜对周内任意一天都换算成同一区间 | 用户反馈：其他平台日周月榜返回的图片不止这么点。会话 94 经代理实测：`popular_by_day/week/month` 无论 `limit`/`page` 如何都固定返回 40 条（`page=1` 与 `page=2` 的字节数、条数、首尾 id 完全相同），这是「图片太少」的真实原因；而 `/post.json` 的 `date:` 单日/区间 + `order:score` 实测可用——单日 2026-10-20 共 83 条（`page=2` 为空），周区间 2026-10-19..25 与月区间 2026-10-01..31 的 `page` 1/2/3 各返回 100 条；两者排序与 `popular_by_day` 的前 40 条大体一致（`date:` + `order:score` 会额外包含 popular 未列出的作品） | `src/shared/rankings.ts`（`rankingDateRange` 与 `buildRankingPath`）、`tests/unit/rankings.test.ts`、`tests/unit/moebooru.test.ts`；02 §4、03 §5.1、04 T-63、06 §5、09 TC-61、07 T-63/P-48；无新增依赖。残余：`order:score` 按当期原始评分排序，与站点 `popular_by_*` 的加权口径可能有个别位次差异；R18 与黑名单仍按页本地过滤，关闭 R18 时每页可见数会少于 100 |
+| DR-091 | T-62 榜单期选择与默认期：日榜保留 `<input type="date">`；周榜改为「周历年份 + 周数」两个下拉（ISO 8601，周一为一周开始），请求时换算为该周周一日期；月榜改为「年份 + 月份」两个下拉，请求仍只带 `year`/`month`；切到日/周/月榜时默认上一个完整周期（昨天 / 上周 / 上月），当年只到当前周/当前月，未来期不可选；计数行追加当前期标签（`formatRankingPeriodLabel`）；新增 `isoWeekOf` / `dateFromIsoWeek` / `isoWeeksInYear` / `defaultRankingDate` / `shiftRankingDate` 辅助 | 用户反馈：其他平台日周月榜返回的图片更多；且周榜应选周数、月榜应选月份。原实现把「今天」当作日/周/月的锚点，进行中的当天/本周/本月榜单数据不完整，切换榜类后结果明显偏少；单一日期选择器也无法表达周数与月份。改为按完整期默认并允许选择周数/月份，日/周/月请求参数结构保持不变 | `src/shared/rankings.ts`（周历与默认期辅助）、`src/renderer/pages/SearchPage.tsx`（期选择控件与切类默认值、计数行期标签）、`tests/unit/rankings.test.ts`（ISO 周与默认期用例）；02 §4、04 T-62、09 TC-58、07 T-62/P-47；无新增依赖。残余：周数采用 ISO 8601（周一开头），站点自身的周界若不同，所选周可能有一两天的偏移；热门仍固定 40 条单页 |
+| DR-090 | T-61 首页翻页到底与加载条抖动修复：`loadMore` 失败时置 `pagingErrorRef`，触底不再自动重试，仅保留底部错误条上的「重试」（`handleRetry` 清除标记）；追页合并后若无新增条目（站点深翻返回重复页 / 已到底）即 `hasMore=false`；新增 `postsRef` 同步镜像列表，避免与 React 提交时序竞争；`PostGrid` 加载提示改为固定 44px 常驻槽位（`data-loading` 只切换文案与分隔线），移除 `position: sticky`，不再覆盖末行卡片 | 用户反馈：在榜单向下翻到底部没有加载出新图片，「正在加载更多」footer 反复抽搐并导致整页上下闪动。根因是追页未推进后 `hasMore` 仍为 true，用户停留在底部时每个滚动事件都会再次发起请求；`loadMore` 开头 `setError(null)` 会先移除底部错误条、失败后再加回，错误条属于 flex 布局，导致内容区反复伸缩；原 `sticky bottom` 加载条还会覆盖末行卡片 | `src/renderer/pages/SearchPage.tsx`（`pagingErrorRef` / `postsRef`、失败暂停与手动解锁、无新增即到底）、`src/renderer/components/PostGrid.tsx`（常驻固定高度加载槽）、`src/renderer/styles/index.css`（`.post-grid__loading`）；02 §2.2/§2.3、04 T-61、09 TC-60、07 T-61/P-46；无新增依赖。残余：到底与失败暂停都没有额外文案提示，错误条自身承担重试入口 |
+| DR-089 | T-60 诊断并入设置：删除独立「诊断」导航页与 `DiagnosticsPage`（含模块样式），诊断 UI 组件化为 `components/DiagnosticsPanel` 并作为设置页末端 `SettingsSection`「诊断」分组；设置页副标题补充「诊断」；诊断行为（站点切换、六项检测、逐项建议/耗时、复制报告、只读不触发 CF）保持不变；导航收敛为五页（首页 / 每日壁纸 / 收藏 / 下载 / 设置） | 用户反馈：诊断放进设置里。诊断属于低频排障入口，与网络代理、IP 映射、下载目录等设置项强相关，放在设置页能减少顶部导航宽度；原页面仅是对六项探测结果的展示，不含独立状态，组件化后嵌入不改变任何 IPC 或探针逻辑 | `src/renderer/App.tsx`（导航与页面收敛）、`src/renderer/pages/SettingsPage.tsx`（末端诊断分组）、新增 `src/renderer/components/DiagnosticsPanel.tsx` 与 `DiagnosticsPanel.module.css`、删除 `src/renderer/pages/DiagnosticsPage.tsx` 与 `DiagnosticsPage.module.css`；02 §1/§10、03、04 T-60、09 TC-59、07 T-60/P-45；无新增依赖。残余：诊断分组位于设置页末尾，需向下滚动；设置页常驻挂载，诊断结果在切换到他页后仍保留（符合预期） |
+| DR-088 | T-59 榜单并入首页：删除独立「榜单」页签与 `RankingPage`（含 `RankingPage.module.css`），导航由七页收敛为六页（首页 / 每日壁纸 / 收藏 / 下载 / 设置 / 诊断）；首页工具条新增热门/日/周/月类型按钮与日期选择（仅当前站点具备 `rankings` 能力时显示），首页默认「热门」即启动页内容；切换类型/日期时若处于首页模式则按当前站点重载，已提交关键词时控件隐藏；新增 `search-date` 样式；移除 App 层 `externalQuery` 转发与 `SearchPageProps` | 用户反馈：榜单与搜索功能重复，希望合并成首页。现有首页已承载搜索框、站点切换、网格、查看器、批量下载与收藏，榜单页除类型/日期外全部重复；把类型与日期作为首页工具条即可覆盖原榜单能力，减少一次页面跳转并去掉 App 层为榜单标签跳转准备的外部查询协议。landscape 下工具条在 800 宽仍可换行，日期输入复用分辨率筛选尺寸 | `src/renderer/pages/SearchPage.tsx`（`rankingKind` / `rankingDate` / refs、`listRankings` 按类型与日期、榜单控件、首页空态与计数文案）、`src/renderer/pages/App.tsx`（导航与页面收敛）、`src/renderer/styles/index.css`（`.search-date`）、删除 `RankingPage.tsx` 与 `RankingPage.module.css`；02 §1/§4、04 T-59、09 TC-58、07 T-59/P-44；无新增依赖。残余：榜单类型与日期不持久化，重启回到热门；榜单模式与关键词搜索共用同一列表状态，切换会清空当前列表 |
+| DR-087 | 修订 DR-085 的首页内容来源：yande / konachan 首页由当日榜（`popular_by_day`）改为 24 小时热门（`listRankings({kind:'popular'})` → `/post/popular_recent.json?period=1d`），仅取单页（`homePagingEnabled` 在首页 + `ranking` 时返回 false，不再请求第 2 页）；wallhaven 仍为空查询 `sorting=toplist&topRange=1d` | 实测反馈：切到 konachan 首页显示「没有匹配的图片」。实测 `konachan.com/post/popular_by_day.json?year=2026&month=11&day=6` 仅返回 1 条当日未结算（pending）作品（1499 字节），该条又被 R18 过滤后为空；同为 moebooru 的 yande 当日榜正常（40KB），说明是站点侧日榜结算时机差异。`popular_recent period=1d` 两站实测各返回 40 条且含安全评级作品，与 wallhaven 24h 口径一致；该端点不支持 `page`，首页改为单页 | `src/renderer/pages/SearchPage.tsx`（`requestPage` 首页改 `kind:'popular'`、新增 `homePagingEnabled`、`runSearch`/`loadMore` 的 `hasMore`）、`src/shared/sites.ts`（`HomeFeedKind` 注释）；02 §2.1、03 §5、04 T-58、09 TC-56、07 T-58/P-43；无新增依赖。残余：首页只展示 40 条热门，滚动到底后不再加载 |
+| DR-086 | 修订 DR-085 的切站语义：切换站点按普通页面切换处理——立即清空上一站点列表并回到新站点首页（24 小时热门 / toplist），不保留旧站结果、不自动重搜搜索框里的旧关键词；搜索页不再维护 `resultSite`，翻页、批量下载、收藏/已看刷新统一使用当前选中站点 `site`；搜索框文本保留，回车提交后才在新站点按关键词搜索 | 用户反馈：切站时不应继续展示上一个站点的内容，应与普通切换页面一致。保留旧结果会让选中态与列表内容不一致，需要额外归属提示才能理解；去掉后状态更简单，也避免翻页/批量操作误用站点归属 | `src/renderer/pages/SearchPage.tsx`（移除 `resultSite` 与归属提示、`handleSiteChange` 重置到新站点首页并清空 `submittedQuery`、标题与 Cloudflare 提示改用 `site`）、`src/renderer/styles/index.css`（删除 `.search-page__source-hint`）；02 §2.1、03 §5、04 T-58、09 TC-56/TC-57、07 T-58/P-43；无新增依赖 |
+| DR-085 | T-58 搜索页空查询首页与切站保持结果：新增 `SiteCapabilities.toplist` 与纯函数 `homeFeedFor(site)`（有 `rankings` → 站点热门，有 `toplist` → 24h 热门）；`posts:search` 对 `toplist` 站点放行空查询并保持 R18 过滤，wallhaven 空查询映射 `sorting=toplist&topRange=1d`；搜索页新增 `feedMode`（`search` / `home`）与 `resultSite`：启动即加载默认站点首页，空查询切站加载该站首页；已提交关键词时切站只切换选中态、保留原列表，翻页/批量下载/收藏/已看刷新按 `resultSite` 处理，回车提交才在新站点搜索，标题下提示列表归属（首页来源与切站语义分别由 DR-087 / DR-086 修订） | 用户要求：切站时若搜索框未变动就不要重新搜索，且各站打开即应有首页（yande/konachan 当日推荐、wallhaven 24h 热门）。空查询直接返回空页会让搜索页长期停留在空态，故按能力表推导首页来源；保持旧结果需要区分"请求模式"与"列表归属"，否则翻页与批量操作会误用新站点。`homeFeedFor` 为纯函数便于单测与后续站点扩展 | `src/shared/sites.ts`（`toplist`、`homeFeedFor`）、`src/main/ipc/handlers/posts-search.ts`（空查询放行）、`src/main/sites/wallhaven.ts`（空查询 toplist 路径）、`src/renderer/pages/SearchPage.tsx`（`feedMode` / 启动首页）、`src/renderer/styles/index.css`、`tests/unit/{constants,wallhaven,posts-search}.test.ts`；02 §2.1、03 §5、04 T-58、06 §7、09 TC-56/TC-57；无新增依赖。残余：首页模式不写入搜索历史，属于浏览行为 |
+| DR-084 | 移除 pexels：站点已不再开放 API 申请，删除 `sites/pexels.ts`、`SITE_CAPABILITIES` 条目、`curated` 能力与空查询精选分支、设置页 Pexels key 与 `ProvidersConfig.pexelsApiKey`、CSP 图片域名；`AnySiteId` 收敛为 yande/konachan/wallhaven/bing；新增迁移 009 清理 `favorites`/`post_views`/`download_tasks`/`posts`/`subscriptions`/`subscription_posts` 中 site='pexels' 的残留；信息栏「摄影」标注回退为通用「来源」 | 站点已不可申请 key，保留入口只会给出永远不可用的配置项；本地残留记录无对应适配器，需清理避免列表出现未知站点 | 已收藏的 pexels 条目会被删除（不可恢复） |
+| DR-080 | 主窗口默认尺寸由 1280×860 下调为 1200×800，会话 87 再下调为 1080×720；最小尺寸由 1024×720 下调为 800×560。启动时用 `screen.getPrimaryDisplay().workAreaSize` 的 90% 收敛默认尺寸（`resolveWindowBounds` 纯函数），最小尺寸也不超过可用区域 | 用户反馈：小屏/高 DPI 下默认 1280×860 超出屏幕，最小 1024×720 又导致窗口无法继续缩小，缩放不灵活；1200×800 仍偏大，故再降到 1080×720。Electron 窗口尺寸是 DIP，按 workArea 收敛可覆盖 1366×768、1920×1080@150% 等场景；下限放宽到 800×560 后瀑布流仍有 3 列，七页导航自动换行不溢出 | `src/shared/constants.ts`（尺寸常量 + `resolveWindowBounds`）、`src/main/index.ts`（启动时读取 workArea）、`tests/unit/constants.test.ts`；02 §1/§12 同步。未引入窗口尺寸持久化，仍不记忆用户上次拖拽结果 |
+| DR-079 | T-57 搜索页切站优先于在途请求：移除站点 tab 的 `disabled={loading}`（保留未配置密钥置灰），`handleSiteChange` 在 `loadingRef` 为 true 时先 `requestSeq.current += 1` 作废旧响应、清空 `loadingRef` 与 `loading`，再切站并按当前关键词重搜；旧请求在主进程仍会跑到超时，但结果因序号不匹配被丢弃，不再占用新站点的 UI 状态 | 实测反馈：wallhaven 在未启用系统代理/直连时请求悬挂，旧的切站入口被禁用，用户无法切回 yande / konachan。请求序号机制已存在（DR-057），只需让切站动作越过 loading 并主动作废旧序号，无需新增 IPC 取消协议或依赖主进程 abort；取消主进程请求涉及跨进程协议变更，成本高且旧响应丢弃已足够保证正确性 | `src/renderer/pages/SearchPage.tsx`（站点 tab disabled 条件、`handleSiteChange` 取消分支）；02 §2.1、03 无需变更、04 §2、09 TC-55；无新增依赖。残余：旧请求仍会消耗 wallhaven 速率额度并持续到 20s 超时，但不会影响其他站点 |
+| DR-078 | T-56 代理新增 `system`（跟随系统）：`PROXY_MODES` 扩为 `direct/system/http/socks5`；`buildProxyRules` 对 `system` 返回空串；主进程按模式映射 `direct → setProxy({mode:'direct'})`、`system → setProxy({mode:'system'})`、HTTP/SOCKS5 → `fixed_servers`；`system` 视为规则有效，`judgeProxyFallback` 直接判定不回退，且不触发可达性探测；设置页选择「跟随系统」时禁用地址/端口，默认值仍为 `direct` | 用户希望 Clash Verge 等系统代理生效且无需手填端口。Electron 33 原生支持 `mode:'system'`，由 Chromium 读取 Windows 系统代理（含 PAC），无需自建注册表读取或 WPAD 探测；`system` 下 `resolveProxy` 返回 `DIRECT` 可能是系统代理关闭的正常状态，自动回退会覆盖用户意图，因此只展示实际生效模式 | `src/shared/proxy.ts`（模式枚举、标签、`buildProxyRules`、`judgeProxyFallback`）、`src/main/network/proxy.ts`（按模式映射 Electron 配置、`system` 跳过探测与回退）、`src/renderer/pages/SettingsPage.tsx`（禁用地址端口、说明文案）、`tests/unit/proxy.test.ts`（新增 3 条断言）；02 §9、03 §4.5、04 §2、09 TC-54；不加依赖。风险：Clash 异常退出后系统代理残留会导致全部请求失败（不自动回退）、规则分流不可控、PAC 拉取延迟、hostmap 硬编码 IP 可能削弱域名规则；使用 `system`/TUN 时应清空 IP 映射 |
 | DR-001 | Electron 33 而非 Tauri | CF 通行、cookie、host-resolver-rules 能力 | 体积 ~150MB |
 | DR-002 | 已看标记独立表 `post_views`，点开即标记 | 不与元数据 upsert 冲突；语义明确 | 需补页逻辑 |
 | DR-003 | R18 默认关闭，自动附加 `-rating:e` | 合规与默认安全 | 用户可显式开启 |
@@ -188,7 +223,18 @@
 | DR-063 | 用户报障「把设置里的下载文件夹删掉后，重新下载/普通下载都失败且不弹选择路径」：实测失败任务 `bytes_done=0`、目标在 `...\Camera Roll\yande\`，而两个原图 URL 经 hostmap 直连均 200；Electron 内实测 `ses.fetch` 206 正常、`fs` 打开 `.part` 会抛 `EPERM`/`ENOENT`——失败发生在写盘，且删掉文件夹后 Windows 会立即重建同名"已知文件夹"，`isUsableDirectory` 只看"存在"于是不弹框，错误被吞成通用「下载失败，请重试」。修复：① `isUsableDirectory` 增加可写探测（创建并删除临时探针文件），探测失败即视为不可用→弹选择框；② 队列 `run()` 写盘前 `mkdirSync(dirname(partPath))` 重建父目录；③ 捕获 `ENOENT`/`EPERM`/`EACCES`/`EROFS`/`ENOTDIR`/`ENOSPC` 时调用新增的 `DownloadQueueOptions#requestDestination`（主进程弹目录框并写回配置，并发失败复用同一次弹框），选中后 `store.relocate` 把任务迁到新目录（保留原有相对路径，默认模板下只有文件名）并重新排队，取消才落 `failed`；④ 失败文案区分"下载目录不可用，请重新选择目录"/"磁盘空间不足，请清理或更换下载目录"，网络与 HTTP 错误不弹目录框 | 用户预期"删掉目录后点下载应弹目录框并落到新目录"，而不是无解释失败；删除后 Windows 已知文件夹自愈让"存在性检查"失效；`bytes_done=0` 说明失败在首次写盘而非流传输，通用错误文案掩盖了真实原因 | `main/download/destination.ts`（可写探测）、`main/download/queue.ts`（`requestDestination`、写前建目录、文件系统错误分类、`repairDestination` 迁移重排）、`main/ipc/registry.ts`（`applyDownloadDestination` 抽取、弹框去重接线）、`tests/unit/downloads-queue.test.ts`（迁移重排 + 取消失败 2 条）；02 §7.5、03 §8、09 TC-40/41；不加依赖 |
 | DR-060 | 用户报障「`pnpm dev` 关闭窗口后进程不退出，需 Ctrl+C」：T-28 接入 konachan 后，首次 konachan 请求会创建隐藏的 CF 挑战窗口（03 §4.3 / DR-010），该窗口只在 `will-quit` 时销毁；因此关闭主窗口后 `window-all-closed` 永不触发，`app.quit()` 不被调用，主进程与 `electron-vite dev` 持续存活。修复：主窗口 `closed` 时若当前平台非 darwin 直接 `app.quit()`（隐藏 CF 窗口随 quit 一并关闭，`will-quit` 仍负责 `destroy` 与关库）；macOS 保留关窗常驻语义；`window-all-closed` 兜底保留 | 单窗口应用不存在"关掉主窗口但保留其它窗口"的产品语义；仅当用户访问过 konachan 才复现，属于 T-28 引入的回归。此前只在 `window-all-closed` 退出是按"无隐藏窗口"的前提写的，隐藏窗口加入后该前提失效 | `main/index.ts`（主窗口 `closed` 主动 `app.quit()`）；07 本行与会话 64；不改 CF 通道与下载逻辑，不加依赖 |
 | DR-039 | T-09 代理落地为 `config.json#network.proxy = {mode: 'direct' \| 'http' \| 'socks5', host, port}`（默认 `direct` + `127.0.0.1:7890`）。app ready 后对两站 session 调用 `setProxy({mode:'fixed_servers', proxyRules})`，再用 `resolveProxy(yande)` 复检；规则非法、复检无法识别或返回 `DIRECT` 时立即回退 `mode:'direct'`。非直连时另用既有 HTTP 客户端探测一次 `/post.json?limit=1`（8s 超时、0 重试），只有 `NETWORK` / `TIMEOUT` 才判定代理不可达并回退，429 / 5xx / CF 视为代理可用。回退原因经新增 `network:status` IPC 读取、`network:status-changed` 事件广播，渲染层在导航下方以 `role=alert` 横幅提示，可手动关闭 | 03 §4.5 只写 `resolveProxy`，只能验证"规则是否被系统采纳"，无法识别"能解析但连不通"的代理；而 §6 `NEXT_MANUAL` 要求不可达代理也回退，故补一次可被既有错误分类约束的轻量探测。03 §7 原本没有代理状态通道，界面无法获知回退原因 | 新增 `shared/proxy.ts`（纯函数：规则组装、配置解析、复检解析、回退判定）与 `main/network/proxy.ts`（应用/复检/探测/回退/状态广播）；`AppConfig` 增加 `network` 分组；preload 新增 `getNetworkStatus` / `onNetworkStatus`；默认直连会显式关闭 Chromium 的系统代理继承。代理编辑入口仍归 T-30（当前手工编辑 `config.json` 后重启生效）；探测请求计入站点令牌桶，但不参与搜索、下载与 CF 通道 |
+| DR-068 | konachan 首访体验优化（用户指定）：① `main/index.ts` 在主窗口创建后调用 `prewarmKonachan()`，后台执行 `getCfChannel('konachan').prewarm()`（先 `ensureClearance()` 再 `ensurePage()`），失败静默；② `cloudflare.ts` 的 cookie 轮询间隔由 1s 缩短为 400ms，25s 总超时不变；③ 搜索页与榜单页首屏 `loading` 状态在 `site === 'konachan'` 时追加提示"正在通过 Cloudflare 验证，首次访问可能需要 10~25 秒，请稍候"，复用既有 `.state-view__description` 类，不新增全局样式。CF 挑战本身的 JS 执行时间无法缩短，预热只是把等待从用户点击后移到启动阶段，并把隐藏窗口的生命周期提前到启动（仍由 `will-quit` 销毁，DR-060 不回归） | 用户反馈 konachan 首次访问很慢，且询问是否每次都要等。实测根因是无有效 `cf_clearance` 时需隐藏窗口求解 CF 挑战（10~25s）；cookie 存于 `persist:` 分区，有效期内跨重启复用，但过期/换 IP/UA 不一致会重新挑战。预热收益最大且不改协议实现；轮询 1s 有约 0.5~1s 可省；静态提示用于避免误判卡死。不伪造 cookie、不引第三方镜像 | `src/main/network/cloudflare.ts`（`POLL_INTERVAL_MS=400`、新增 `prewarm()`）、`src/main/network/http-site.ts`（新增 `prewarmKonachan()`）、`src/main/index.ts`（启动预热调用）、`src/renderer/pages/SearchPage.tsx`、`src/renderer/pages/RankingPage.tsx`（首屏提示）；02 §2.5、03 §4.3、09 TC-47/M5；不加依赖 |
+| DR-067 | T-34 诊断页落地：新增 IPC `diag:run`（`{site}` → `Result<DiagReport>`），主进程 `main/diagnostics/service.ts` 编排六项 `dns/tcp/tls/proxy/cf/disk`，`probes.ts` 提供 DNS / TCP / TLS 直连探测；hostmap 命中时 TCP/TLS 直连映射 IP、TLS `servername` 仍用站点域名，未命中回退系统 DNS（5s / 8s 超时）。每项独立结算，单项异常只标记该项并附建议，不中断整份报告；每项返回 `durationMs`。CF 只检查 session 中是否已有 `cf_clearance`（yande 跳过），**不主动触发隐藏挑战窗口**，未取得时给警告而不提供手动验证按钮（`cf:manualVerify` 仍为独立任务，03 §7）。磁盘项复用 DR-063 的 `isUsableDirectory`（存在 + 目录 + 可写）；未配置的默认目录缺失时先创建再判定（与 DR-059 首次下载一致，用户配置的目录不会被自动创建）。渲染层新增 `DiagnosticsPage`（顶部导航第六项），复制报告由 `shared/diagnostics.ts#formatDiagReport` 生成纯文本。按 07 §6 验收口径，02 §10 原设计的"限速（最近 5 分钟请求数）"改为"磁盘（下载目录可用性）"，不引入请求计数基础设施；错误卡片暂不加「打开诊断」跳转（DR-052 的延后项） | 07 §6 的 NEXT_ACCEPTANCE 明确六项为 DNS/TCP/TLS/代理/CF/磁盘，与 02 §10 的"限速"冲突，按"规则以 07 最新内容为准"取磁盘；诊断需要可解释、可离线验收，主动触发 CF 挑战会让单次诊断额外等待约 11–25s 并创建隐藏窗口，故只读现有 cookie 状态；请求计数需要改动 HTTP 客户端统计口径，超出 T-34 范围 | `src/shared/diagnostics.ts`（新增：类型、标签、汇总、报告文本）、`src/main/diagnostics/{service,probes}.ts`（新增）、`src/main/ipc/{diag-input,handlers/diag-run}.ts`（新增）、`src/shared/ipc-contract.ts`、`src/preload/index.ts`、`src/main/ipc/registry.ts`（服务接线与 `diag:run` 注册）、`src/renderer/pages/DiagnosticsPage.tsx` + `.module.css`（新增）、`src/renderer/App.tsx`（导航第六项）、`tests/unit/diagnostics.test.ts`（新增 13 条）；02 §1/§1.1/§2.5/§10/§15、03 §3/§7/§9、04 §5、09 TC-46；不加依赖 |
+| DR-069 | T-47 关注动态：新增迁移 007（`subscriptions(site,tag,created_at,initialized,last_seen_post_id,last_checked_at)` + `subscription_posts(site,tag,post_id,first_seen_at,unread)`，均 epoch 毫秒），作品快照复用 `posts`；关注按站点隔离，首次成功拉取最近 20 条全部已读并置 `initialized=1`，之后仅 `post_id > last_seen_post_id` 标未读，单关注保留最近 100 条；刷新按站点串行、同站点并发复用同一 Promise，单关注失败不阻断其它关注，启动后延迟 3s 静默刷新；拉取沿用 `applyR18Filter` + `applyBlacklistFilter`，过滤后无正向标签则跳过；时间线按 `(site,post_id)` 去重、未读取或；取消关注事务内级联删除，`record` 写入前校验订阅存在避免孤儿 | 用户需要关注固定画师/标签并快速看到最近作品；首次拉取必须视为已读，否则会一次性产生 20 条历史未读；`last_seen_post_id=0` 无法区分「首次成功但结果为空」与「从未成功」，故加 `initialized`；同作品被多个关注命中会在聚合视图重复并虚增未读数，必须去重 | 新增 `storage/migrations/007_subscriptions.sql`、`shared/subscriptions.ts`、`main/storage/subscriptions.ts`、`main/subscriptions/service.ts`、`main/ipc/follows-input.ts` 与 6 个 `handlers/follows-*`、`renderer/components/FollowsPanel.tsx` + `.module.css`；改 `ipc-contract.ts`、`preload/index.ts`、`ipc/registry.ts`、`main/index.ts`、`FavoritesPage.tsx`、`TagList.tsx`、`InfoPanel.tsx`、`ImageViewer.tsx`、`PostGrid.tsx`、`PostCard.tsx`、`styles/index.css`；02 §8、03 §3/§6.1/§7、04 §2 P1、09 TC-48；`tests/unit/{db,history}.test.ts` 迁移断言同步更新；不加依赖 |
+| DR-072 | 关注动态浏览改版（T-55，用户反馈「一个标签占一屏，想看指定标签得一直翻页」）：把「聚合时间线 / 按关注分组」改为「时间轴 / 标签」两页签。① 时间轴按 `first_seen_at` 的**本地日期**分组（作品快照复用 `posts`，日期取首次发现时间的本地自然日），只渲染有新增作品的日期、跳过空日期，日期内按首次发现时间倒序；每日先以单行卡片展示，列数按容器宽度自适应，若当日作品数超过列数，末位显示「查看全部 N 张」，点击就地展开为完整网格，同一时间只展开一个日期。② 标签页每个关注占一行：行头显示 `#标签`、未读数、作品数与「全部已读 / 取消关注」，行内同样单行 + 宽度自适应 + 末位「查看更多」，点击就地展开为完整网格并提供「收起」。③ 列数算法为 `max(1, floor((容器宽度 - 两侧 12px + 12px) / (200px + 12px)))`，用 `ResizeObserver` 在容器尺寸变化时重算；行内卡片统一 1fr 等宽。④ 不改数据库、IPC 与刷新服务：日期分组是 `buildSubscriptionTimeline` 输出上的纯函数派生，未读仍是"打开即清、分组可全清"。行/展开两种形态共用同一份数据与同一套 `PostCard` 交互 | 用户实际使用时，原分组视图每个标签渲染全部作品（最多 100 条），一个标签就占满一屏，想找某个标签需要长距离滚动；用户更希望"按天回顾当天新增"和"每个标签横向扫一眼、按需展开"。按宽度自适应比固定条数更贴合窗口尺寸变化；就地展开避免丢失当前浏览位置；只做前端派生可把风险限制在渲染层，存储与已读语义保持不变 | `shared/subscriptions.ts`（新增日期分组与日期标签纯函数）、`renderer/components/FollowsPanel.tsx` + `.module.css`（重写两页签布局与列数计算）；02 §8.2、09 TC-53、04 §2 P1、07 本行与 P-36（人工验证口径同步更新）；不改 `storage/`、`subscriptions/service.ts`、`ipc-contract.ts`；不加依赖 |
+| DR-070 | 多源壁纸接入的站点抽象（规划，T-48）：不按站点复制适配器，而是把站点抽象为 provider——`SiteId` 扩为 `yande/konachan/wallhaven/pexels/bing`，`shared/sites.ts` 新增 `SITE_CAPABILITIES`（`search` / `rankings` / `suggest` / `needsKey` / `curated`）驱动 UI 与 handler；适配器 `search` 必选，`rankings` / `suggestTags` 改为可选。`Post` 对无对应概念的站点做占位归一化：`md5` 空串、下载身份键改为 `site:id`、`rating` 无分级站点固定 `safe`（wallhaven 按 purity 映射）、`score` 取站点收藏/点赞数、`createdAt` 缺失记 `0` 且界面不显示时间、`tags` 缺失为空数组；下载命名模板新增 `{site}` / `{id}`，`{md5}` 在 md5 为空时回退为 `site_id`，md5 校验仅对提供 md5 的任务执行 | 现有 `SITE_IDS` 的 zod 枚举、`Post` 必填字段、`MoebooruAdapter` 必选方法、收藏页硬编码站点名与 `IMAGE_HOSTS` 都假设"每站都有 md5 + 分级 + 标签 + 榜单"；直接加站会在 8 处以上漏改，能力表把差异收敛为一份声明。占位规则可避免改 `download_tasks` 表结构与既有下载语义 | `shared/{constants,sites,models,downloads}.ts`、`main/sites/{adapters,types}.ts`、`main/ipc/*-input.ts`、`main/download/queue.ts`、`renderer/pages/{SearchPage,RankingPage,FavoritesPage}.tsx`、`renderer/index.html`（CSP）；`download_tasks` 不加列；03 §5、06 §2/§3 同步；新增能力表与占位归一化单测 |
+| DR-071 | 第三方图库密钥存放（规划，T-49）：`config.json#providers` 新增 `wallhavenApiKey` / `pexelsApiKey`，随 `Settings.providers` 经 `settings:get/set` 读写；设置页掩码显示、保存前 `trim`、空白视为未配置；未配置时对应站点在搜索页不可选并提示原因；密钥只在本机渲染层与主进程间传递，不写入日志、不进入错误 `detail`、不进入诊断报告 | 现有设置只有 hostmap/content/downloads/network 四组，没有凭证位置；keytar 等系统钥匙串会引入原生依赖与打包成本，与"仅 Windows x64、单机应用"现状不符；`config.json` 本身已是明文配置，威胁模型以本机用户为准 | `shared/{settings,providers}.ts`、`main/ipc/settings-*`、`SettingsPage.tsx` + `.module.css`、`main/sites/{wallhaven,pexels}.ts`；02 §9、03 §7/§11 补凭证处理说明；新增设置解析与校验单测 |
+| DR-073 | T-50 wallhaven 适配：`GET /api/v1/search` 固定带 `categories=111`，`atleast` 由 `width:` 下界映射（≥3840→3840x2160、≥2560→2560x1440、≥1920→1920x1080，其余按 16:9 推导偶数高），`sorting` 由 `order:` 映射（score→relevance、fav→favorites、random→random）。R18 关闭（handler 追加 `-rating:e`）→ `purity=100`；开启且无 rating 意图 → `111`；显式 `rating:` 按位合并（safe/questionable/explicit → `1/1/1` 位序）。站点字符串 id 以 base36 解码为安全整数作为本地身份键，`md5=''`，下载命名回退 `wallhaven_<id>`；`score` 取 `favorites`、`tags=[]`、`created_at` 按 UTC 转毫秒。未配置 key 直接返回 CONFIG（不请求）；HTTP 401 映射为密钥无效的 CONFIG（不重试），429 保留 RATE_LIMITED 并给出 wallhaven 文案。密钥通过 `setProviderKeySource` 每次请求读取，设置保存后无需重启 | wallhaven 的查询语法与 moebooru 不同，`rating/width/order` 不能原样拼进 `q`；purity 是唯一可表达 R18 的开关，必须在适配器内映射。字符串 id 与本地 `Post.id`（number）及收藏/下载主键不兼容，base36 在 6 位长度内不会溢出安全整数。401 若沿用通用 NETWORK 文案，用户无法判断是密钥问题；429 保留自动退避语义但补充站点来源 | 新增 `main/sites/wallhaven.ts`、`tests/unit/wallhaven.test.ts`；`shared/constants.ts`（`isSiteId` / `isAnySiteId`）、`shared/{models,downloads,ipc-contract}.ts`、`main/sites/adapters.ts`、`main/ipc/registry.ts`、7 个 `ipc/*-input.ts`、`main/storage/{downloads,favorites,views,history,tags}.ts`、`main/download/queue.ts`、`renderer/components/{FollowsPanel,ImageViewer}.tsx`（关注入口对非 booru 站点收敛）；06 §2/§3 待 T-54 补契约 |
 | DR-066 | T-35 自动更新落地：只支持 **NSIS 安装版**，便携版（`PORTABLE_EXECUTABLE_DIR` 存在）与未打包的 `pnpm dev` 返回 `unsupported`，明确提示而非报错。用 `electron-updater` 的 `autoUpdater`，`autoDownload=false`、`autoInstallOnAppQuit=true`、`allowPrerelease=false`；electron-builder 增加 `publish.provider=github`（`owner: LeDonX`、`repo: bluu-wallpaper`），打包时生成 `app-update.yml`，检查更新走 GitHub Release 的 `latest.yml`。检查/下载/安装全部由用户在设置页「关于与更新」手动触发（PRD FR-18 为手动检查），状态经新增 `updates:get-state` 读取与 `updates:status` 广播（`idle/checking/not-available/available/downloading/downloaded/error/unsupported`）；下载进度按事件实时刷新。安装调用 `quitAndInstall(false, true)`，重启后生效。更新失败只展示中文提示，不影响现有功能 | 未签名、未配置图标的安装包无法离线验证真实升级链路，但客户端流程、状态机与 IPC 可先落地并有单测；T-35 验收要求 `检查更新、下载、重启生效`，必须有可见的手动入口；便携版没有安装器上下文，electron-updater 的 NSIS 流程不适用，需显式区分；仓库地址已由 `git remote` 确认，无需把更新源做成用户可编辑配置 | `package.json`（新增依赖 `electron-updater`）、`electron-builder.yml`（`publish`）、新增 `shared/updates.ts` / `main/update/service.ts`、`shared/ipc-contract.ts`、`preload/index.ts`、`main/ipc/registry.ts`（服务实例化与 4 个 handler）、`SettingsPage.tsx` + `.module.css`；02 §9、03 §3/§7/§10、04 §5、09 TC-44/45；新增 `tests/unit/updates.test.ts` |
+| DR-074 | 产品名定为 **LePic**（用户反馈 Bluu / 蓝噗 不满意，确认不设中文名；英文取 LeDon + picture）。`appId=com.lepic.app`、`productName=LePic`、`shortcutName=LePic`、`APP_NAME='LePic'`、数据库 `userData/lepic.db`；窗口标题与诊断报告标题同步；内部技术命名（`window.booru`、`BooruApi`、`booru://`、IPC 前缀）继续不跟随品牌。取代 DR-030 的「不写自动迁移代码」口径：新增 `main/storage/legacy-profile.ts`，启动最早阶段把 `%APPDATA%\bluu\config.json` 与 `bluu.db` 复制为 `%APPDATA%\lepic\config.json` 与 `lepic.db`（目标已存在则跳过，不复制 `Partitions`） | 用户明确要求再次改名，且旧中英文名不再使用；改名会改变 Electron 的 userData 目录，用户已确认保留设置、收藏与下载记录，手工迁移不可持续，需自动化；旧目录保留可回退，cookie / CF clearance 仍由应用重新获取 | `package.json`、`electron-builder.yml`、`src/shared/{constants,diagnostics,settings}.ts`、`src/main/{index,bootstrap}.ts`、`src/main/storage/legacy-profile.ts`（新增）、`src/main/download/destination.ts`、`src/renderer/index.html`、`scripts/spike-sqlite.cjs`、`tests/unit/{settings,downloads,downloads-store}.test.ts`、`tests/unit/legacy-profile.test.ts`（新增）；01~10 与 `docs/index.txt` 品牌同步；02 §1.1 角色形象与命名改由 T-43 重新确定；GitHub 仓库 `LeDonX/bluu-wallpaper` 暂不改名，自动更新源不变 |
+| DR-076 | T-52 Bing 每日壁纸：新增能力位 `SITE_CAPABILITIES.daily`（仅 bing=true）与 `SiteAdapter.daily?()` 可选方法，新增 `daily:list`（`{site}` → `Result<PostPage>`，入参 zod 校验，能力缺失或适配器无 `daily` 时 CONFIG）。请求 `GET /HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN`；`Post.id` 取 `enddate`（回退 `startdate`）的 `YYYYMMDD` 整数，`createdAt` 为该日期本地零点 epoch 毫秒（避免渲染层按 UTC 跨日），`previewUrl` 取 `urlbase_400x240.jpg`、`sampleUrl`/`fileUrl` 取 `urlbase_1920x1080.jpg`，`md5=''`、`rating='safe'`、`score=0`、`tags=[]`、`fileSize=0`，`copyright` 写入 `Post.source`；空 `images` 返回空页，日期/`urlbase` 缺失或非法 JSON 判 PARSE，429 映射 RATE_LIMITED 中文案；关键词搜索直接 CONFIG。渲染层新增 `DailyPage`（8 张卡片、日期倒序、卡片开查看器复用查看与下载、首次激活才请求），导航入口按 `daily` 能力位过滤，页面常驻挂载但独立于搜索页 | 每日壁纸是"按天列表"而非关键词搜索，和 booru 的 `posts:search`/榜单语义不同，单独通道避免把站点特例塞进搜索 handler；Bing 不返回 md5/分级/评分/标签，沿用 DR-070 的占位归一化；`enddate` 作为 id 既稳定又能让下载文件名回退为 `bing_YYYYMMDD.jpg`；本地零点避免 UTC 格式化在非零时区显示前一天；入口按能力表隐藏，符合"能力表驱动 UI" | 新增 `main/sites/bing.ts`、`main/ipc/daily-input.ts`、`main/ipc/handlers/daily-list.ts`、`renderer/pages/DailyPage.tsx` + `.module.css`、`tests/unit/bing.test.ts`（11 条）、`tests/unit/daily-list.test.ts`（4 条）；改 `shared/sites.ts`（能力位）、`main/sites/{types,adapters}.ts`、`shared/ipc-contract.ts`、`preload/index.ts`、`main/ipc/registry.ts`、`renderer/App.tsx`、`tests/unit/constants.test.ts`；03 §5/§7/§14 同步；06 契约与 02 UX 待 T-54 |
+| DR-077 | T-53 多源 UI 收尾：① `SiteCapabilities` 新增 `resolutionFilter`（yande/konachan/wallhaven=true，pexels/bing=false），搜索页仅在支持站点显示最小分辨率下拉，选值以 `width:>=N` 拼入查询串，wallhaven 由 `atleast` 映射、moebooru 原样透传；② 搜索/榜单/收藏/每日入口统一由能力表派生（`sitesWithCapability`），搜索 tab 覆盖 yande/konachan/wallhaven/pexels，未配置 key 的第三方站点置灰并提示；③ pexels 精选站点切站时自动以空查询加载，且空查询允许翻页；④ 收藏页 tab 改为 `ALL_SITE_IDS`（含 bing/pexels），下载任务站点名改用 `SITE_LABELS`；⑤ 新增迁移 008 给 `posts` 补 `source` 列，收藏快照保留署名/版权，信息栏对 pexels 标注「摄影」且 URL 可点；⑥ `.app-nav` 允许换行，7 项导航在 1024 宽不溢出 | 站点差异集中到能力表，避免按站点散落 if；收藏/信息栏在新站点也能保留署名 |
+| DR-075 | T-51 pexels 适配：`GET /v1/search?query=&page=&per_page=24`，空查询（且无正向标签，如仅 `rating:`）走 `GET /v1/curated?page=&per_page=24`，请求头 `Authorization: <key>`。`posts:search` 原按 09 TC-06 对所有站点空查询直接返回空页；现按能力表 `curated` 放行，仅对 pexels 等精选站点把空查询交给适配器，且该分支不追加 R18/黑名单过滤（pexels 只有 safe 内容）。归一化：`md5=''`、`rating='safe'`、`score` 取 `liked`（布尔无计数，true→1）、`tags=[]`、`createdAt=0`、`fileSize=0`；`previewUrl=src.medium`、`sampleUrl=src.large2x`、`fileUrl=src.original`；摄影师署名写入 `Post.source`，有姓名与主页时格式为 `姓名（URL）`，供 T-53 信息栏展示。未配置 key 直接 CONFIG（不请求）；HTTP 401→密钥无效 CONFIG（不重试）；429 保留 RATE_LIMITED 并给 pexels 文案 | pexels 无分级/标签/md5/发布时间与点赞计数，与 booru 字段差异最大；空查询在 pexels 是有意义的产品入口（精选），与 TC-06"空查询不发请求"冲突，按能力表做例外比在 UI 层硬编码站点判断更可复用；署名放进 `source` 可复用现有 `Post` 形状与信息栏，避免为 T-53 提前改表结构 | 新增 `main/sites/pexels.ts`、`tests/unit/pexels.test.ts`；`main/sites/adapters.ts`（路由与密钥注入）、`main/ipc/handlers/posts-search.ts`（curated 空查询放行）、`tests/unit/posts-search.test.ts`（新增 1 条）；06 契约待 T-54 补充；未改 UI 站点入口（归 T-53） |
 
 ---
 
@@ -228,7 +274,22 @@
 | P-20 | DR-043 的扁平目录与“打开所在文件夹”需实机确认 | 旧 `config.json` 的模板迁移在读取时完成，设置页保存前展示值需人工确认；Windows 资源管理器选中行为与未完成任务选中 `.part` 的观感需窗口内验证 | 本地桌面 `pnpm dev`：下载一张图片，确认落在 `downloads/yande/<md5>.<ext>`；下载页点击“打开所在文件夹”，确认资源管理器打开并选中该文件；对下载中的任务点击，确认选中 `.part`；把模板手动改回旧默认值再启动，确认设置页显示新默认值 | T-25 / T-26 / DR-043 |
 | P-19 | DR-042 的重复任务清理与取消安全需在真实数据下确认 | 历史重复行会在下次启动时折叠，但磁盘上可能仍残留 `(1)(2)` 等重复最终文件（按设计不自动删除）；同一图片下载中重复点按的幂等性需实机确认 | 本地桌面 `pnpm dev`：对同一图片连按 `D` 4 次，确认下载页只出现 1 条任务；入队后取消，确认其它已完成的同名副本文件仍在；用含重复行的旧库启动，确认任务列表折叠为 1 条且只跑一个任务 | T-23 / T-26 / DR-042 |
 | P-18 | T-29 榜单页的真实接口行为与窗口内表现未验证 | 期榜端点（`popular_by_day/week/month`）是否同样需要 CF cookie、是否支持 `limit/page` 与返回量未知；热门 `period=1d` 的实际周期仍未核对（P-03）；四入口切换、日期选择器的窗口观感需人工确认 | 本地桌面 `pnpm dev`：逐个打开热门/日/周/月，确认首屏有图且切换日期结果随之变化；滚动期榜确认翻页无重复且到底停止；断网/限流确认错误文案与重试；确认查看器、收藏、下载与"标签点击跳搜索页"可用 | T-29 |
+| P-35 | T-46 konachan 首访预热的真实收益与退出行为需人工确认 | 预热依赖真实 CF 挑战与网络：冷启动后立即切 konachan，首次搜索/榜单应明显快于 10 秒；若仍在验证，首屏提示应可见；访问过 konachan 后关闭主窗口，进程必须退出（预热创建的隐藏窗口不得阻止退出，DR-060 不回归）；`cf_clearance` 有效期内再次冷启动应直接复用、不重复挑战 | 本地桌面：① 清除 `%APPDATA%` 下应用会话数据后 `pnpm dev`，启动后立即切 konachan 搜索；② 记录首访耗时并与改造前对比；③ 观察控制台/界面无预热失败噪音；④ 切回 yande 无影响；⑤ 关闭窗口确认进程退出；⑥ 重启后有效期内再访问确认不重复挑战（TC-47） | T-46 / DR-068 |
+| P-34 | T-34 诊断页的真实探测结果与窗口观感需人工确认 | 六项探测依赖真实网络与 hostmap 生效状态：DNS/TCP/TLS 实际结果、代理回退原因、konachan 的 `cf_clearance` 状态与磁盘可写判定需在桌面环境核对；诊断页的状态色、耗时、建议文案、站点切换与复制报告内容需目视；DNS 直连探测使用系统 DNS，若系统解析被污染但 hostmap 命中，报告应显示"应用内映射"而非真实 DNS 结果 | 本地桌面 `pnpm dev`：① yande 与 konachan 各运行一次，确认六项齐全、状态与 03 §9 探测策略一致；② 关闭 hostmap 重启后再运行，确认 DNS 项改为系统解析；③ 配置不可达代理与不可写目录，确认警告/失败与建议可见；④ konachan 首次访问前运行确认 CF 为警告，成功访问后运行确认变为通过；⑤ 点「复制报告」粘贴到文本编辑器确认站点/时间/汇总/逐项内容完整；⑥ 观察诊断耗时不超过约 8s（TLS 超时上限） | T-34 / DR-067 |
+| P-36 | T-47 / T-55 关注动态的窗口内交互需人工确认 | 关注/未读/刷新依赖真实站点与限流：首次关注应拉最近 20 条且全部已读；之后刷新只把新 id 标未读；时间轴按本地日期分组、跳过空日期、当日超出列数时末位「查看全部」就地展开；标签页每个关注只占一行、窗口变宽列数增加、末位「查看更多」展开与「收起」；未读红点与计数、按条/分组清除、手动添加、启动自动刷新、取消关注需目视；konachan 关注首次拉取走 CF 通道 | 本地桌面 `pnpm dev`：① 搜索页打开作品 → 标签点「＋关注」；② 收藏页「关注动态」→「时间轴」，确认首次条目无红点且按日期倒序、无空日期；③ 缩窄/拉宽窗口确认每日与每标签一行内的卡片数量随宽度变化；④ 点某日「查看全部」确认就地展开该日全部作品，再切换另一日确认同时只展开一组；⑤ 切到「标签」页签确认每个关注一行，点「查看更多」展开、「收起」还原；⑥ 点刷新，确认新作品红点与计数；⑦ 打开一条未读确认只清该条，点标签行「全部已读」清整组；⑧ 重启 app 确认关注保留且启动后自动刷新；⑨ 取消关注确认该行与作品消失；⑩ konachan 首次关注失败时保留订阅并提示（TC-48 / TC-49） | T-47、T-55 / DR-069、DR-072 |
 | P-33 | DR-066 自动更新的设置页入口与真实升级需人工确认 | 设置页「关于与更新」版本号、检查中/已是最新/发现新版本/下载百分比/已下载/失败各状态的文案与按钮禁用需目视；`pnpm dev` 与便携版应显示"不支持"原因；安装版需真实 Release 才能验证下载与重启生效，未签名安装包可能触发 SmartScreen。**进度（会话 69）**：`v0.1.1` 已发布、`latest.yml` 可公开下载；含更新代码的 `0.1.0` 测试版已安装并启动，剩检查→下载→重启安装的点击验证 | ① 安装版点「检查更新」应显示"发现新版本 v0.1.1"；② 点「下载更新」，进度实时更新，完成后出现「重启并安装」，点击后应用退出并升级到 0.1.1；③ 升级完成后再点检查应显示"已是最新版本"；④ 断网点检查只显示"检查更新失败，请稍后重试"；⑤ `pnpm dev` 与 portable 版确认显示不支持的说明且按钮禁用 | T-35 / DR-066 |
+| P-37 | wallhaven 的真实 API key 强制性与下载行为需人工确认 | 未确认 `/api/v1/search` 是否强制 `X-API-Key`、无 key 的返回码、purity 与 R18 开关的映射是否符合预期；`w.wallhaven.cc` 图片是否存在防盗链、下载是否稳定 | 本地桌面 `pnpm dev`：① 不配置 key 搜索，确认提示"请先在设置页填写 wallhaven API key"；② 配置 key 后搜 `city night` 并勾选 ≥1920x1080，确认结果与分辨率筛选生效；③ 关闭 R18 确认无 nsfw 结果，开启后确认提示；④ 下载一张确认落盘与文件命名；⑤ 连续翻 3 页确认不触发 429 | T-50 |
+| P-38 | ~~pexels 的密钥、限额与署名展示需人工确认~~ 已关闭（DR-084：pexels 移除） | 401 无 key 的提示、`/v1/search` 与 `/v1/curated` 的返回字段（`src.original` 是否可直接下载）、每小时限额触发后的错误分类、摄影师署名与链接的展示位置均未在真实窗口验证。**进度（会话 80）**：适配器与精选分页已完成（DR-075），署名写入 `Post.source`（`姓名（主页URL）`），搜索入口与信息栏样式归 T-53，尚需真实 key | 本地桌面 `pnpm dev`：① 不配 key 确认站点不可选/提示；② 配 key 后空查询看精选、搜 `mountain` 看结果；③ 翻到第 3 页确认无重复；④ 下载一张确认原图可落盘；⑤ 卡片与信息栏确认"摄影：xxx"及链接可点；⑥ 快速多次搜索观察限流提示 | T-51 |
+| P-40 | T-56「跟随系统」代理需窗口内验证 | 设置页切到「跟随系统」后地址/端口禁用，Clash Verge 开系统代理 + 规则/全局模式时站点与图片正常加载、状态区 `effective` 显示实际模式；关闭系统代理后应用按直连访问且**不出现回退横幅**；代理软件异常退出后请求失败并给普通网络错误，不自动切直连；`system` 下清空 IP 映射后规则分流正常 | 本地桌面 `pnpm dev`：① 设置页切「跟随系统」保存，状态区确认生效模式；② Clash 规则模式访问 yande/konachan/wallhaven，确认图片与下载可用；③ 关闭 Clash 系统代理（保留 TUN 关闭）后重启，确认直连可用且无回退提示；④ 强杀 Clash 后搜索，确认错误提示且 `effective` 不变成「直连」；⑤ 分别验证 HTTP/SOCKS5 与直连模式无回归 | T-56 / DR-078 |
+| P-41 | T-57 慢请求期间切站需窗口内验证 | 未启用系统代理时 wallhaven 直连请求悬挂，站点 tab 仍可点击；切到 yande / konachan 后立即发起新搜索，旧响应返回时不覆盖新结果、loading 正常结束；未配置密钥的站点仍置灰 | 本地桌面 `pnpm dev`：① 代理保持直连，切到 wallhaven 搜一个关键词，确认请求悬挂期间 tab 未置灰；② 立即点 yande / konachan，确认马上发起新搜索并展示结果；③ 等 wallhaven 旧请求超时/返回，确认列表未被覆盖、无重复 loading；④ 未配置密钥的站点确认仍不可点；⑤ 正常网络下连续快速切站 5 次，确认最终展示最后一次站点结果 | T-57 / DR-079 |
+| P-42 | DR-080 的窗口默认/最小尺寸需窗口内验证 | 小屏与高 DPI 下默认尺寸按 workArea 90% 收敛，不再超出屏幕；拖拽缩小到 800×560 时五项导航自动换行、不产生横向滚动，瀑布流仍保持 3 列，设置页与下载页内容可滚动；大屏（workArea ≥ 1200×800）仍按 1080×720 启动，不被放大 | 本地桌面 `pnpm dev`：① 1366×768 或 1920×1080@150% 下启动，确认窗口完整可见且底部状态区不被任务栏遮挡；② 把窗口拖到 800×560，逐页检查导航换行、搜索网格、查看器、收藏、下载、设置（含诊断分组）无横向滚动条；③ 大屏启动确认尺寸为 1080×720；④ 双屏时确认窗口出现在主屏且尺寸正常 | DR-080 |
+| P-45 | T-60 诊断并入设置需窗口内验证 | 顶部无「诊断」页签（共五项）；设置页最下方出现「诊断」分组，站点切换、开始诊断、六项结果、耗时、建议与复制报告可用；诊断运行不弹 Cloudflare 验证、不改配置；已滚到底后可再次运行 | 本地桌面 `pnpm dev`：① 确认顶部导航无「诊断」；② 打开设置滚到底，点「开始诊断」，确认六项结果与统计出现；③ 切到 konachan 再诊断，确认站点与结果对应；④ 复制报告并在剪贴板确认内容；⑤ 800×560 窗口下分组布局不溢出 | T-60 / DR-089 |
+| P-46 | T-61 首页翻页到底与加载条需窗口内验证 | 日/周/月榜或关键词搜索滚到底：底部「正在加载更多」不再反复闪烁、列表与页面不上下抖动，末行卡片不被加载条覆盖；追页失败时保留当前列表与底部错误条，继续滚动不再自动请求，点「重试」才重新请求且成功后恢复自动追页；站点深翻返回重复页时停止追页、不无限加载；yande / konachan 热门首页仍为单页到底 | 本地桌面 `pnpm dev`：① 切到某天的日榜/周榜，连续滚到底多次，确认加载条不抽搐、页面不抖动；② 断网或代理异常后滚到底触发失败，确认错误条出现且继续滚动不再请求，恢复网络后点「重试」可继续加载；③ 在日榜持续下滚确认不会出现重复图片或无限「正在加载更多」；④ 首页热门滚到底确认不再请求后续页 | T-61 / DR-090 |
+| P-48 | T-63 期榜返回量与翻页需窗口内验证 | 日/周/月榜改用 `date:` 单日/区间 + `order:score` 后，结果应明显多于原固定 40 条：日榜为所选日期全部作品（不足 100 条时第 2 页为空），周榜为周一至周日、月榜为当月 1 日至月末且都可继续滚动加载；切换期/榜类后列表与计数行同步；到底时按 T-61 规则停止；R18 关闭时 explicit 仍被本地过滤 | 本地桌面 `pnpm dev`：① 切日榜选一个作品较多的日期，确认条数超过 40 且可继续下滚；② 切周榜/月榜确认可持续翻页并最终停止、无重复图片；③ 与站点网页同一期的结果数量对比；④ 检查跨月边界（月末为 28/29/30/31 天）与跨年周（如 2025 年第 52 周 / 2026 年第 1 周）结果是否落在正确区间；⑤ 关闭/开启 R18 确认 explicit 过滤仍生效 | T-63 / DR-092 |
+| P-47 | T-62 榜单期选择与默认期需窗口内验证 | 日榜显示日期选择器；周榜显示「年 + 第几周」两个下拉；月榜显示「年 + 月」两个下拉；当年只到当前周/当前月、过去年份可选全年，未来期不可选；切到日/周/月默认昨天 / 上周 / 上月；切换期后按当前站点重载，计数行显示当前期（如 `周榜 · 2026 年第 45 周`）；日/周/月榜的结果数量明显多于原「今天/本周/本月」口径 | 本地桌面 `pnpm dev`：① 切日榜确认默认昨天、可选今天与更早日期；② 切周榜确认默认为上周、可选年份与周数、当前年只能选到本周；③ 切月榜确认默认为上月、当前年只能选到本月；④ 分别切回日/周/月确认列表与计数行期标签同步变化；⑤ 对比站点网页同一期的结果数量，确认接近上限（约 100/页、可继续滚动） | T-62 / DR-091 |
+| P-44 | T-59 首页合并榜单需窗口内验证 | 导航只有「首页 / 每日壁纸 / 收藏 / 下载 / 设置」五项（诊断已并入设置，T-60）；首页默认热门并可直接浏览；切到日/周/月出现对应期选择（日：日期；周：年 + 周数；月：年 + 月份）且不可选未来期，切换后按当前站点加载；提交关键词后榜单控件消失、结果区为搜索；清空回车回到榜单；切到 wallhaven 榜单控件隐藏、显示 24h toplist；查看器内点标签仍能搜索 | 本地桌面 `pnpm dev`：① 确认顶部无「榜单」页签且首页即内容；② 依次点热门/日/周/月并改日期，确认列表与计数随之变化；③ 搜 `hatsune` 后确认榜单控件隐藏，清空回车后恢复；④ 切 wallhaven 确认无榜单控件且为 toplist；⑤ 在日榜查看器中点标签，确认回到关键词搜索且站点不变；⑥ 800×560 窗口下工具条换行不溢出 | T-59 / DR-088 |
+| P-43 | T-58 首页与切站切换视图需窗口内验证 | 启动即显示 yande 24 小时热门而非空态；切到 konachan / wallhaven 分别加载 24 小时热门（konachan 不得出现「没有匹配的图片」），wallhaven 未配 key 时 tab 仍置灰；提交关键词后切站，上一站点列表立即消失、显示新站点首页，搜索框文本保留但不自动按旧关键词搜索；回车提交后才在新站点按关键词搜索 | 本地桌面 `pnpm dev`：① 冷启动确认结果区已有 24 小时热门作品；② 清空搜索框后依次切 konachan / wallhaven，确认首屏为各站 24 小时热门、konachan 非空；③ 搜 `hatsune` 后切到另一站点，确认旧列表立即清空、页面变成新站点首页且未自动搜关键词；④ 在慢请求期间切站，确认旧响应返回时不会把旧站点内容刷回列表；⑤ 保留搜索框文本直接回车，确认在新站点按该关键词搜索；⑥ yande / konachan 首页滚到底确认不会继续请求第 2 页（wallhaven 仍可翻页） | T-58 / DR-085 / DR-087 |
+| P-39 | Bing 每日壁纸接口与地区参数需人工确认 | `mkt=zh-CN` 的标题/版权文案、`urlbase` 拼接的 1920x1080 与 UHD 变体可用性、8 天历史顺序、Bing 图片是否存在防盗链均需真实网络验证。**进度（会话 81）**：适配器与 `daily:list`、每日壁纸页已完成（DR-076），待真实网络验证 | 本地桌面 `pnpm dev`：① 打开「每日壁纸」确认 8 张卡片与日期倒序；② 核对图片与版权文案；③ 下载一张确认 1920x1080 落盘；④ 断网后确认错误卡片可重试；⑤ 1024 宽窗口确认导航与网格不溢出 | T-52 |
 
 ---
 
@@ -876,29 +937,258 @@
 - 遗留: TC-45 只剩窗口内点击验证——安装版 `0.1.0`（含本次更新代码）已启动，需依次点「检查更新」（应发现 v0.1.1）→「下载更新」→「重启并安装」，升级后再检查应为"已是最新版本"；断网、`pnpm dev`、portable 三种"不支持/失败"表现也需目视；未签名安装包可能触发 SmartScreen；P-28~P-32 等既有待人工项保持原状
 - 下一步: 看板仅剩 T-34（诊断页），其验收依赖真实网络探测与窗口内目视，按规则停止并等用户指定（见 §6）
 
+### 2026-11-06 会话 70
+
+- 任务: T-34 诊断页（用户指定领取）。目标：实现 `diag:run` 与六项诊断（DNS/TCP/TLS/代理/CF/磁盘）及诊断页 UI，支持逐项建议与一键复制报告；真实网络探测与窗口观感留人工验证
+- 改动文件: `src/shared/diagnostics.ts`（新增：`DiagItemId`/`DiagStatus`/`DiagItem`/`DiagReport`/`DiagRunInput`、标签、汇总、`formatDiagReport`）、`src/main/diagnostics/probes.ts`（新增：系统 DNS、TCP 443、TLS 握手探测）、`src/main/diagnostics/service.ts`（新增：六项编排与依赖注入）、`src/main/ipc/diag-input.ts`（新增：zod 入参校验）、`src/main/ipc/handlers/diag-run.ts`（新增：`Result` 信封与异常兜底）、`src/shared/ipc-contract.ts`（`diag:run` 通道与 `runDiagnostics` 契约）、`src/preload/index.ts`、`src/main/ipc/registry.ts`（服务接线与 handler 注册）、`src/renderer/pages/DiagnosticsPage.tsx` + `.module.css`（新增：站点切换、运行按钮、逐项结果、复制报告）、`src/renderer/App.tsx`（顶部导航第六项）、`tests/unit/diagnostics.test.ts`（新增 13 条）；02 §1/§1.1/§2.5/§10/§15、03 §3/§7/§9、04 §5、09 TC-46 / M5、07 本行；未改与任务无关的代码，未新增依赖
+- 决策: DR-067——六项按 07 §6 验收取 DNS/TCP/TLS/代理/CF/磁盘（02 §10 原"限速"改为"磁盘"）；hostmap 命中时 TCP/TLS 直连映射 IP、TLS `servername` 用站点域名，未命中回退系统 DNS；每项独立结算（异常只标记该项并附建议），5s / 8s 超时；CF 只读 session 中 `cf_clearance`，不主动触发挑战窗口；磁盘复用 DR-063 的 `isUsableDirectory`；复制报告为纯文本 `formatDiagReport`，错误卡片暂不加跳转入口
+- 验证: `pnpm lint` 通过（`eslint .`，无输出）；`pnpm typecheck` 通过（node + web）；`pnpm test` 427/427 通过（46 个文件，新增 `diagnostics.test.ts` 13 条，其中含 hostmap 命中/回退、DNS 空结果、TCP/TLS 异常、代理回退、CF 三态、默认目录创建、磁盘不可写与 handler 校验）
+- 遗留: P-34 需窗口内确认六项真实结果、状态色/耗时/建议文案、站点切换与复制报告，并覆盖"关闭 hostmap"与"konachan 验证前后"两种场景
+- 下一步: 看板无 `todo`，等待用户指定后续方向（见 §6）
+
+### 2026-11-06 会话 71
+
+- 任务: T-46 konachan 首访优化（用户明确指定推荐方案：启动预热 + 缩短轮询 + 加载提示）。目标：把 CF 验证等待从用户点击后移到启动阶段，缩短 cookie 轮询延迟，并在首屏明确提示，避免误判卡死
+- 改动文件: `src/main/network/cloudflare.ts`（`POLL_INTERVAL_MS` 1s→400ms，新增 `prewarm()`：`ensureClearance()` + `ensurePage()`）、`src/main/network/http-site.ts`（新增 `prewarmKonachan()`，失败静默）、`src/main/index.ts`（主窗口创建后调用 `prewarmKonachan()`）、`src/renderer/pages/SearchPage.tsx`、`src/renderer/pages/RankingPage.tsx`（首屏 loading 且站点为 konachan 时追加 Cloudflare 验证提示，复用 `.state-view__description`）；02 §2.5、03 §4.3、09 TC-47 / M5、07 本行；未改无关代码，未新增依赖
+- 决策: DR-068——预热而非每次点击后等待；轮询 400ms 平衡响应与 CPU；提示只在首屏 loading 出现，不做全局常驻；不伪造 `cf_clearance`、不引第三方镜像；`cf_manualVerify` 仍为独立任务
+- 验证: `pnpm lint` 通过（`eslint .`，无输出）；`pnpm typecheck` 通过（node + web）；`pnpm test` 427/427 通过（46 个文件，无新增/改动用例）
+- 遗留: P-35 需窗口内确认冷启动首访收益、提示文案、预热失败静默、关窗进程退出（DR-060 不回归）与有效期内不重复挑战
+- 下一步: 看板无 `todo`，等待用户指定后续方向（见 §6）
+
+### 2026-11-06 会话 73（任务规划）
+
+- 任务: 多源壁纸接入任务拆分（用户确认 wallhaven / pexels / Bing 每日壁纸三项均可接入）。只拆分任务与登记文档，不写业务代码
+- 改动文件: `docs/04-Task-Plan.md`（§1 新增 M6、§2 T-48~T-54、§3 关键路径、§7 变更记录）；`docs/07-Progress.md`（§2 新增 M6 看板、DR-070/DR-071、§4 P-37~P-39、本记录、§6 后续顺序）；未改源码、未新增依赖
+- 决策: DR-070——站点抽象为 provider + `SITE_CAPABILITIES` 能力表，`Post` 对无 md5/分级/标签的站点做占位归一化，下载身份键与命名模板增加回退；DR-071——图库密钥存 `config.json#providers`、设置页掩码编辑、不进日志/错误 detail/诊断报告。补充未入 DR 的取舍：wallhaven 搜索默认 `sorting=toplist` + `topRange=1M`（榜单能力仍只保留 yande/konachan）；pexels 空查询走 `/v1/curated`，不扩展榜单入口；Bing 做成独立页面而不是并进搜索页，避免空查询语义混乱
+- 验证: `pnpm lint` 失败（1 条 `src/main/ipc/registry.ts` 导入排序，属会话 72/T-47 进行中的改动，本次未触源码）；`pnpm typecheck` 通过（node + web）；`pnpm test` 424/427 通过，3 条失败均因迁移 007（`subscriptions` / `subscription_posts`）尚未同步 `tests/unit/db.test.ts` 期望表名与 `tests/unit/history.test.ts` 迁移计数，同属 T-47 范围
+- 遗留: T-47（会话 72）仍为 `doing`，其 lint 导入排序与两处测试断言需由该会话收尾；P-37~P-39 需真实网络与 API key 人工验证
+- 下一步: 等 T-47 与 P-36 完成后从 T-48 开始（见 §6）
+
+### 2026-11-06 会话 74（T-47 收尾）
+
+- 任务: T-47 关注动态收尾（会话 72 实施中断后继续）。目标：修复会话 73 记录中指出的 lint 导入排序与两条失败单测，跑通 lint / typecheck / test，并补齐 02/03/04/09/07 文档
+- 改动文件: `src/main/subscriptions/service.ts`（`prepareQuery` 计算 `effectiveTags`，黑名单把正向标签全部排除时返回 `null` 跳过拉取；`refresh` 的 `checked += 1` 移到循环开头，统计"尝试检查的关注数"）；`docs/02-UX-Design.md`（§5.2 标签 chip 旁「＋关注」、§8 拆 8.1/8.2、§14.1 登记 `FollowsPanel`、§15 变更记录）；`docs/03-Architecture.md`（§3 目录树、§6.1 迁移 007、§7 6 个 `follows:*` 通道与 `follows:updated` 广播、§12 测试口径、§14）；`docs/04-Task-Plan.md`（§2 P1 新增 T-47、§7）；`docs/09-Test-Cases.md`（新增 §3.7 与 TC-48、M5 手工项）；`docs/07-Progress.md`（T-47 置 `done`、本记录、§6）；未改与收尾无关的代码，未新增依赖
+- 决策: 沿用 DR-069，不新增决策编号。补充口径：`prepareQuery` 必须剔除被黑名单排除的正向标签，否则"关注标签本身命中黑名单"仍会发起请求；`checked` 语义定为"尝试检查的关注数"（含失败项），与返回 `failedTags` 对齐
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（48 个测试文件、449/449 条，exit 0，含 `subscriptions.test.ts` 14 条与 `follows-handlers.test.ts` 8 条）
+- 遗留: P-36 需窗口内确认关注全流程（首次拉取已读、刷新新作品未读、双视图、启动/手动刷新、红点与计数、按条/分组清未读、查看器「＋关注」、konachan CF 通道）；P-37~P-39 仍待 M6 实施后验证
+- 下一步: T-48 多源适配架构（会话 73 已登记 `doing`，DR-070），见 §6
+
+### 2026-11-06 会话 75（T-48）
+
+- 任务: T-48 多源适配架构。只做共享层与主进程架构，不做 UI 站点切换/入口隐藏（归 T-53），也不修改 T-47 正在改的渲染层与 IPC 契约文件
+- 改动文件: `src/shared/constants.ts`（新增 `PROVIDER_SITE_IDS` / `ALL_SITE_IDS` / `AnySiteId`，`IMAGE_HOSTS` 补 wallhaven/pexels/bing 图片域）；`src/shared/sites.ts`（5 站地址与名称、`SiteCapabilities` / `SITE_CAPABILITIES` / `siteSupports`）；`src/shared/sessions.ts`、`src/main/network/sessions.ts`、`src/main/network/http.ts`（session 与 HTTP 类型扩到 `AnySiteId`）；`src/main/network/http-site.ts`（`createSessionTransport(site)` 统一普通 `ses.fetch`，仅 konachan 保留 CF 通道）；`src/main/network/proxy.ts`（代理覆盖全部站点 session）；新增 `src/main/sites/types.ts`（`SiteAdapter` 最小契约）、`src/main/sites/adapters.ts` 改返回 `SiteAdapter` 且仍只注册 booru 两站；`src/main/ipc/handlers/{posts-search,posts-rankings,tags-suggest}.ts`（按可选能力拒绝并提示）；`src/shared/downloads.ts`（`{md5}` 为空回退 `site_id`，紧凑路径同步）；`src/renderer/index.html`（CSP `img-src` 补第三方图片域）；单测 `constants` / `downloads-template` / `posts-rankings` / `tags-suggest`
+- 决策: 沿用 DR-070，不新增编号。实施口径：为避开 T-47 收尾中的 `FavoritesPage`（`Record<SiteId, string>`）与 IPC 契约，`SiteId` 语义保留 booru 两站，新增 `AnySiteId` 表示 5 站全集；能力表、网络层、代理、图片域名已按全集生效，`Post.site` 与 `favorites` / `views` / `downloads` 的站点入参待 T-50/T-51/T-53 随 UI 一起扩宽；无 md5 图片的下载身份继续使用 `site:post:{id}`，`{md5}` 模板回退为 `{site}_{id}`
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（48 个测试文件、455/455 条，exit 0）
+- 遗留: 第三方站点适配器与页面（T-50/T-51/T-52）、密钥设置（T-49）、能力表驱动的 UI 与站点切换（T-53）均未实现；P-37~P-39 待 M6 实施后人工验证
+- 下一步: T-49 图库服务密钥设置（见 §6）
+
+### 2026-11-06 会话 76（T-55 关注动态浏览改版）
+
+- 任务: 按用户反馈重做关注动态的浏览布局。原「按关注分组」每个标签渲染全部作品（最多 100 条），一个标签占满一屏，找指定标签需长距离滚动。目标：时间轴按日期展示当天新增，标签页每个关注只占一行、按窗口宽度自适应，超出时提供「查看更多」就地展开
+- 改动文件: `src/shared/subscriptions.ts`（新增 `SubscriptionDayGroup` 与 `buildSubscriptionDays`、`formatFollowDayLabel`，按本地自然日分组、跳过空日期、日期倒序）；`src/renderer/components/FollowsPanel.tsx`（两页签改为「时间轴 / 标签」；`useRowColumns` 用 `ResizeObserver` 按容器宽度算单行列数；日期/标签共用单行 + 行末「查看全部 / 查看更多」磁贴；`expanded` 同一时间只展开一个日期或标签；展开后就地渲染完整网格并可「收起」；查看器按分区作品列表导航）；`src/renderer/components/FollowsPanel.module.css`（`scroll / section / sectionHeader / sectionAction / row / rowGrid / moreTile` 等，移除旧的 `groups / group / grid`）；`tests/unit/subscriptions.test.ts`（新增 4 条日期分组与日期标题用例）；`docs/02-UX-Design.md`（§8.2 改为时间轴/标签、§15）；`docs/04-Task-Plan.md`（P1 新增 T-55、§7）；`docs/09-Test-Cases.md`（新增 TC-53、M5 手工项、TC-48 口径同步）；`docs/07-Progress.md`（T-55、DR-072、P-36、本记录）
+- 决策: 新增 DR-072（时间轴按 `first_seen_at` 的本地日期分组、跳过空日期；每日期/每标签单行 + 宽度自适应列数 `max(1, floor((可用宽 + 12) / (200 + 12)))`；同一时间只展开一组；不改存储、IPC 与刷新服务）。未改 `storage/`、`subscriptions/service.ts`、`ipc-contract.ts`，未新增依赖
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出；期间对 `FollowsPanel.tsx` 的 import 顺序执行过一次 `eslint --fix`）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（48 个测试文件、459/459 条，exit 0）
+- 遗留: P-36 增补人工确认项（时间轴按日期、无空日期、窗口缩放列数变化、「查看全部/查看更多」展开与收起、同一时间只展开一组）；P-37~P-39 仍属 M6
+- 下一步: T-49 图库服务密钥设置（见 §6）
+
+### 2026-11-06 会话 77（T-49）
+
+- 任务: T-49 图库服务密钥设置（DR-071）
+- 改动文件: 新增 `src/shared/providers.ts`（`ProvidersConfig` / 默认值 / 读取解析 / 保存前 trim / `hasProviderKey` / 密钥校验文案，空白视为未配置）；`src/shared/settings.ts`（`Settings.providers` 组、默认值、解析与 `validateSettings` 接入）；`src/main/network/hostmap.ts`（`config.json` 默认值与读取补 `providers`，避免读写时丢 key）；`src/main/ipc/settings-input.ts`（providers 组 zod 校验，缺失时补齐为空）；`src/main/ipc/handlers/settings-set.ts`（先 trim 再校验并落盘）；`src/renderer/pages/SettingsPage.tsx`（新增「图库服务」分组：两个 `type=password` 输入、已配置/未配置状态、保存反馈；副标题同步）；`tests/unit/settings.test.ts`（新增解析、校验、trim 落盘、报错不回显密钥、providers 缺失补齐共 5 条）
+- 决策: 沿用 DR-071，不新增编号。密钥以明文存 `userData/config.json#providers`（本机配置文件），界面掩码显示；校验只拒绝含空白/控制字符或超长，留空合法；报错文案只含字段名，不含密钥内容；Bing 无需密钥。`config.json` 读取必须解析该组，否则任意一次设置保存都会丢失密钥
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（48 个测试文件、464/464 条，exit 0；首次运行 1 条失败为 trim 校验顺序，修正为先 trim 再校验后全绿）
+- 遗留: 「未配置时站点不可选并说明原因」的站点切换 UI 归 T-53（wallhaven/pexels 尚未接入，当前不会出现在站点列表）；P-39 待 T-50/T-51 后人工验证密钥保存与重启保留
+- 下一步: T-50 wallhaven 接入（见 §6）
+
+### 2026-11-06 会话 78（T-50）
+
+- 任务: T-50 wallhaven 接入（DR-073）
+- 改动文件: 新增 `src/main/sites/wallhaven.ts`（`/api/v1/search` 查询映射、响应归一化、401/429 错误映射与缺 key CONFIG）、`tests/unit/wallhaven.test.ts`（13 条：查询串 / purity / atleast / 分页 / id 与时间归一化 / 空页 / 下载命名回退 / 缺 key / 401 / 429 / 非法 JSON）；`src/main/sites/adapters.ts`（`getSiteAdapter(AnySiteId)` 注册 wallhaven 并按 CONFIG 拒绝未接入站点、`setProviderKeySource`）；`src/main/ipc/registry.ts`（启动时注入 providers 读取）；`src/shared/{constants,models,downloads,ipc-contract}.ts`（`isSiteId` / `isAnySiteId`、`Post.site` 与收藏/已看/下载及搜索类 IPC 扩到 `AnySiteId`）；7 个 `src/main/ipc/*-input.ts`（站点枚举改用 `ALL_SITE_IDS`）；`src/main/storage/{downloads,favorites,views,history,tags}.ts` 与 `src/main/download/queue.ts`（站点参数扩宽，下载读回用 `isAnySiteId` 回落）；`src/main/ipc/handlers/{posts-search,posts-rankings,tags-suggest}.ts`（适配器注入签名扩宽）；`src/renderer/components/{FollowsPanel,ImageViewer}.tsx`（关注入口仅对 booru 站点生效）；`tests/unit/{favorites-handlers,history-handlers,tags-suggest,views-handlers}.test.ts`（断言类型同步扩宽）
+- 决策: 新增 DR-073（查询映射、purity R18 映射、id base36、401/429 文案、密钥热读取）。界面站点切换与能力表入口仍按 `SITE_IDS`，多源入口收敛归 T-53
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（50 个测试文件、480/480 条，exit 0）
+- 追加（同日）: 用户自备 key 后要求立即试用，提前落地 T-53 的 wallhaven 入口：`SearchPage.tsx` 站点切换增加 wallhaven（读取 `settings.providers`，未配置时置灰并提示「设置 → 图库服务」）、`SearchBar.tsx` / `download-batch.ts` 站点类型扩宽；`FavoritesPage.tsx` 增加 wallhaven 收藏 tab（关注动态仅 booru 站点，wallhaven 下禁用并回退到收藏作品页）。lint / typecheck 再次通过
+- 遗留: P-37 需真实 wallhaven API key 人工验证（无 key/有效期/1080P 筛选/R18/下载/连续翻页）；P-39（Bing）随 T-52；最小分辨率筛选、pexels/bing 入口与能力表驱动切换仍归 T-53
+- 下一步: T-51 pexels 接入（见 §6）
+
+### 2026-11-06 会话 79（品牌改名 LePic）
+
+- 任务: 品牌命名与改名（非看板任务，DR-074）
+- 改动文件: `package.json`（`name=lepic`、描述）、`electron-builder.yml`（`appId=com.lepic.app`、`productName/shortcutName=LePic`）、`src/shared/{constants,diagnostics,settings}.ts`、`src/main/index.ts`（`setAppUserModelId`）、`src/main/bootstrap.ts`（数据库改用 `DB_FILE_NAME`）、`src/main/storage/legacy-profile.ts`（新增：旧目录自动迁移）、`src/main/download/destination.ts`（写盘探针前缀）、`src/renderer/index.html`（窗口标题）、`scripts/spike-sqlite.cjs`、`tests/unit/{settings,downloads,downloads-store}.test.ts`、`tests/unit/legacy-profile.test.ts`（新增 3 条）；文档 01~10 标题与产品名、`docs/index.txt`
+- 决策: 新增 DR-074。产品名 **LePic**（不设中文名），源自 LeDon + picture；保留技术命名（`window.booru`、`BooruApi`、`booru://`、IPC 前缀）不跟随品牌
+- 迁移: 用户确认自动迁移旧数据。`bootstrap()` 在 app ready 之前调用 `migrateLegacyProfile(appData, userData)`，把 `%APPDATA%\bluu\config.json` 复制为 `%APPDATA%\lepic\config.json`、`bluu.db` 复制为 `lepic.db`；目标已存在则跳过，不复制 `Partitions`，旧目录保留可回退
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（50 个测试文件、480/480 条，exit 0）
+- 遗留: 站点 cookie / CF clearance 需在新目录重新获取；GitHub 仓库仍为 `LeDonX/bluu-wallpaper`，未改名（改名后需同步 `electron-builder.yml#publish.repo`）；安装器与快捷方式名、`%APPDATA%\lepic` 迁移结果需本地人工确认；品牌角色与图标归 T-43 重新设计
+- 下一步: T-51 pexels 接入（§6 `NEXT_TASK` 未变）
+
+### 2026-11-06 会话 80（T-51）
+
+- 任务: T-51 pexels 接入（DR-075）
+- 改动文件: `src/main/sites/pexels.ts`（新增：查询/精选路径、归一化、署名拼接、401/429 映射、密钥热读取）、`src/main/sites/adapters.ts`（pexels 路由与密钥注入）、`src/main/ipc/handlers/posts-search.ts`（curated 站点空查询放行且跳过 R18/黑名单）、`tests/unit/pexels.test.ts`（新增 11 条）、`tests/unit/posts-search.test.ts`（新增 1 条 curated 用例）、`docs/07-Progress.md`（本记录、看板、DR-075、P-38、§6）
+- 决策: 新增 DR-075。空查询对 `SITE_CAPABILITIES.curated=true` 的站点交给适配器并走 `/v1/curated`，替代 TC-06 的统一空页；pexels `md5=''`、`rating='safe'`、`score` 取 `liked`（无计数）、`createdAt=0`、`fileSize=0`；摄影师署名写入 `Post.source`（`姓名（主页URL）`），供 T-53 展示；未配置 key 不请求直接 CONFIG
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（51 个测试文件、492/492 条，exit 0）
+- 遗留: P-38 需真实 pexels key 人工验证（无 key/精选/搜索/翻页/限额/下载/署名）；pexels 搜索入口与信息栏署名样式仍归 T-53；现有 `posts` 快照表不持久化 `source`，收藏页展示署名需在 T-53 前补存储（本次未改表结构）
+- 下一步: T-52 Bing 每日壁纸页（§6 `NEXT_TASK`）
+
+### 2026-11-06 会话 81（T-52）
+
+- 任务: T-52 Bing 每日壁纸页（DR-076）
+- 改动文件: 新增 `src/main/sites/bing.ts`（请求路径、日期解析、`urlbase` 变体拼接、归一化、PARSE/429 映射、搜索 CONFIG）、`src/main/ipc/daily-input.ts`（zod 站点校验）、`src/main/ipc/handlers/daily-list.ts`（能力缺失 CONFIG + Result 信封）、`src/renderer/pages/DailyPage.tsx` + `DailyPage.module.css`（8 张卡片、日期倒序、查看器复用、首次激活加载）、`tests/unit/bing.test.ts`（11 条）、`tests/unit/daily-list.test.ts`（4 条）；改 `src/shared/sites.ts`（`daily` 能力位）、`src/main/sites/{types,adapters}.ts`（`daily?()` 契约与 bing 路由）、`src/shared/ipc-contract.ts`（`daily:list` / `DailyListInput` / `listDaily`）、`src/preload/index.ts`、`src/main/ipc/registry.ts`、`src/renderer/App.tsx`（导航项 + `active` 门控）、`tests/unit/constants.test.ts`（能力表断言）；03 §5/§5.1/§7/§14 同步
+- 决策: 新增 DR-076。每日壁纸独立通道 + `daily` 能力位；`id` 取 `enddate`（`YYYYMMDD` 整数），`createdAt` 为本地零点；预览 `400x240`、原图与下载 `1920x1080`；版权文案写入 `Post.source`；空 `images` 为空页，缺字段/坏 JSON 为 PARSE，429 给 Bing 文案
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（53 个测试文件、507/507 条，exit 0）
+- 遗留: P-39 需真实网络人工验证（8 天顺序、图片与版权、1920x1080 落盘、断网重试、1024 宽导航与网格）；bing 收藏已写入本地库但收藏页 bing tab 仍归 T-53；`posts` 快照表不持久化 `source` 的既有问题仍同 P-38，T-53 展示署名/版权前需处理；06 契约、02 UX、09 用例归 T-54
+- 下一步: T-53 多源 UI 收尾（§6 `NEXT_TASK`）
+
+### 2026-11-06 会话 82（T-53）
+
+- 任务: T-53 多源 UI 收尾（DR-077）
+- 改动文件: `src/shared/sites.ts`（新增 `resolutionFilter` 能力位与 `sitesWithCapability`）、`src/shared/constants.ts`（新增 `isProviderSiteId`）、`src/renderer/pages/SearchPage.tsx`（能力表驱动站点 tab、第三方密钥置灰、最小分辨率下拉与 `width:>=N` 拼接、curated 空查询与翻页、切站重搜）、`src/renderer/components/SearchBar.tsx`（`suggestEnabled` 门禁与切站清理联想）、`src/renderer/pages/RankingPage.tsx`、`src/renderer/pages/FavoritesPage.tsx`（收藏 tab 改 `ALL_SITE_IDS`）、`src/renderer/components/TaskRow.tsx`（站点名走 `SITE_LABELS`）、`src/renderer/App.tsx`（每日入口按 `sitesWithCapability('daily')`）、`src/renderer/components/InfoPanel.tsx` + `ImageViewer.module.css`（pexels 标注「摄影」、来源 URL 可点）、`src/renderer/styles/index.css`（`.app-nav` 换行、`.search-resolution`）、`src/main/storage/migrations/008_posts_source.sql`（新增）与 `migrations/index.ts`、`src/main/storage/favorites.ts`（快照读写 `source`）、`tests/unit/{constants,favorites,db,history}.test.ts`
+- 决策: 新增 DR-077。站点差异继续收敛到 `SITE_CAPABILITIES`，UI 不再散落站点判断；最小分辨率复用原站 `width:` 语法，wallhaven 由 `atleast` 映射、moebooru 原样透传，pexels/bing 不显示筛选；curated 站点切站自动加载精选并允许空查询翻页；收藏快照补 `source` 以保留 pexels 署名与 bing 版权
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、510/510 条，exit 0）
+- 遗留: P-37 / P-38 / P-39 仍需真实网络与自备 key 人工验证；本轮新增的人工项：搜索页最小分辨率筛选与切站重搜、pexels 精选切站自动加载、收藏页 bing/pexels 分组与署名、1024 宽 7 项导航不溢出；06 契约、02 UX、03/09 同步归 T-54
+- 下一步: T-54 测试与文档同步（§6 `NEXT_TASK`）
+
+### 2026-11-06 会话 83（T-54）
+
+- 任务: T-54 测试与文档同步（09 / 06 / 02 / 03）
+- 改动文件: `docs/06-API-Contract.md`（新增 §7 wallhaven / pexels / bing 契约、§8 fixtures 清单增三站、原 §7~§9 顺延为 §8~§10、变更记录）、`docs/09-Test-Cases.md`（新增 §3.8 TC-49~TC-52、§4 新增 M6 手工清单）、`docs/02-UX-Design.md`（七页导航、能力表驱动站点 tab、密钥置灰、分辨率筛选、curated、来源字段差异、收藏 5 站、设置新增「图库服务」、导航换行）、`docs/03-Architecture.md`（目录补三站适配器 / 迁移 008 / Daily·Diagnostics 页面、`SiteId` vs `AnySiteId` 与能力表、`Post.site`、IPC 能力门禁、`settings:set` providers、CSP、§12 口径、变更记录）、`docs/07-Progress.md`；`tests/unit/{wallhaven,pexels,bing}.test.ts`（改为读取 fixtures）；新增 `fixtures/{wallhaven/search.json,pexels/search.json,bing/daily.json}`
+- 决策: 三站 fixtures 为按公开接口文档结构构造的**离线样本（未实测）**，已在 06 §8 标注，取得真实 key 后替换为实测响应；单测改为直接读取 fixtures，避免内联样本与文档漂移；能力位与 06 契约表对齐（search / rankings / suggest / needsKey / curated / daily / resolutionFilter）；未改任何源码与依赖
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、510/510 条，exit 0）
+- 遗留: P-36（关注动态全流程）、P-37（wallhaven 密钥/分辨率/R18/下载）、P-38（pexels 密钥/限额/署名）、P-39（Bing 接口与 1920×1080 落盘）仍需真实网络或窗口内人工验证；三站 fixtures 待实测替换
+- 下一步: M6 全部任务已完成，无自动可领取任务；等待用户指定新任务，或先完成 §4 的 M6 手工清单
+
+### 2026-11-06 会话 84（T-56）
+
+- 任务: T-56 系统代理跟随模式（DR-078）
+- 改动文件: `src/shared/proxy.ts`（`PROXY_MODES` 增 `system`、标签、`buildProxyRules` 与 `judgeProxyFallback`）、`src/main/network/proxy.ts`（按模式映射 Electron 配置、`system` 跳过探测与回退）、`src/renderer/pages/SettingsPage.tsx`（禁用地址/端口、说明文案）、`tests/unit/proxy.test.ts`（新增 3 条断言）；`docs/{02,03,04,07,09}` 同步
+- 决策: 新增 DR-078。默认仍 `direct`；`system` 映射 `setProxy({mode:'system'})` 读取 Windows 系统代理（含 PAC），不生成固定规则串；`system` 下 `resolveProxy` 返回 `DIRECT` 视为系统代理关闭的正常状态，不做回退与可达性探测；HTTP/SOCKS5 保留原有规则校验、复检与回退逻辑
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、512/512 条，exit 0）
+- 遗留: P-40 需窗口内验证（Clash 系统代理/规则生效、关闭系统代理不回退、代理异常退出不自动切直连、HTTP/SOCKS5 与直连无回归）；真实系统代理链路未在自动化环境验证
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-40 人工验证
+
+### 2026-11-06 会话 85（T-57）
+
+- 任务: T-57 慢请求期间允许切站（DR-079）
+- 改动文件: `src/renderer/pages/SearchPage.tsx`（站点 tab 移除 `disabled={loading}`、`handleSiteChange` 在途请求作废分支）；`docs/{02,04,07,09}` 同步（03 架构无变更）
+- 决策: 新增 DR-079。复用既有请求序号机制：切站时 `requestSeq.current += 1` 使旧响应失效，清空 `loadingRef` / `loading` 后立即按新站点重搜；保留未配置密钥的 `!ready` 置灰。不新增跨进程取消 IPC，旧请求在主进程自然超时，结果被渲染层丢弃
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、512/512 条，exit 0）
+- 遗留: P-41 需窗口内验证（wallhaven 悬挂时切回 yande/konachan、旧响应不覆盖、密钥站点仍置灰）；无 React 组件测试环境，本次未新增单测
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-41 人工验证
+
+### 2026-11-06 会话 86（窗口尺寸调整）
+
+- 任务: 用户反馈「打开默认分辨率太大、手动缩放最小值太高」的窗口尺寸调整（非看板任务，DR-080）
+- 改动文件: `src/shared/constants.ts`（`DEFAULT_WINDOW_SIZE` 1280×860 → 1200×800、`MIN_WINDOW_SIZE` 1024×720 → 800×560，新增 `WINDOW_WORK_AREA_RATIO` 与纯函数 `resolveWindowBounds`）、`src/main/index.ts`（启动时按 `screen.getPrimaryDisplay().workAreaSize` 计算宽高与最小宽高）、`tests/unit/constants.test.ts`（尺寸断言更新 + 大屏/小屏/极小屏 3 条边界用例）；`docs/{02,07}` 同步（03/04/09 无契约或任务变化）
+- 决策: 新增 DR-080。默认尺寸在启动时按主屏可用区域 90% 收敛，小屏或高 DPI 下不超出屏幕；最小尺寸下调到 800×560 让用户能继续缩小；最小尺寸不超过 workArea，避免极小屏下窗口无法落位。不引入窗口尺寸持久化，不改变窗口外观与页面布局
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、515/515 条，exit 0）
+- 遗留: P-42 需窗口内验证（小屏/高 DPI 启动不超出屏幕、800×560 下各页无横向滚动、大屏仍为 1200×800）；本执行环境无 GUI，未做真机观感验证
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-42 人工验证
+
+### 2026-11-06 会话 87（窗口默认尺寸二次下调）
+
+- 任务: 用户反馈 1200×800 仍偏大，继续下调窗口默认尺寸（沿用 DR-080，不新增编号）
+- 改动文件: `src/shared/constants.ts`（`DEFAULT_WINDOW_SIZE` 1200×800 → 1080×720；最小 800×560 与 workArea 90% 收敛逻辑不变）、`tests/unit/constants.test.ts`（三处期望值同步）、`docs/02-UX-Design.md` 与 `docs/07-Progress.md`（DR-080、P-42、T-04 结论同步）
+- 决策: 默认尺寸取 1080×720（3:2，较 1200×800 宽高各降 10%）；仍受 workArea 90% 上限约束，1366×768 下实际为 1080×655；未改最小尺寸与持久化策略
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（node + web，exit 0）；`pnpm test` 通过（53 个测试文件、515/515 条，exit 0）
+- 遗留: P-42 仍需窗口内确认（1080×720 默认观感、800×560 下无横向滚动）
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-42 人工验证
+
+### 2026-11-06 会话 88（移除 pexels）
+
+- 任务: 用户反馈 pexels 不再开放 API 申请，移除该站点相关功能（非看板任务，DR-084）
+- 改动文件: 删除 `src/main/sites/pexels.ts`、`tests/unit/pexels.test.ts`、`fixtures/pexels/`；`src/shared/{constants,sites,providers,settings}.ts`（移除 pexels 站点/能力/key/curated）；`src/main/ipc/{settings-input,handlers/posts-search}.ts`、`src/main/sites/adapters.ts`、`src/main/network/http-site.ts`、`src/renderer/index.html`；`src/renderer/pages/{SearchPage,SettingsPage,FavoritesPage}.tsx`、`src/renderer/components/{SearchBar,InfoPanel}.tsx`；新增 `src/main/storage/migrations/009_remove_pexels.sql` 与迁移登记；`tests/unit/{constants,favorites,settings,posts-search,db,history}.test.ts`（`settings.test.ts` 的未知密钥字段改用 `unknownApiKey`）；文档 02/03/04/06/07/09 同步（09 的 TC-50 标记移除、TC-52 改为 4 站/`toplist`、M6 手工清单去掉 pexels）
+- 决策: 新增 DR-084。搜索/收藏入口继续按能力表驱动，删除 pexels 后自动收敛为搜索 3 站、收藏 4 站；移除 `curated` 能力与空查询精选分支，Bing / wallhaven 的空查询热门（DR-085）保持不变；信息栏来源统一为「来源」，保留 URL 可点；迁移 009 清理本地残留，避免历史记录出现无适配器的站点
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、507/507 条，exit 0）
+- 遗留: P-38（pexels 密钥/限额/署名）随站点移除而关闭；P-37 / P-39 / P-40 / P-41 / P-42 仍需真实网络或窗口内人工验证；既有本地 pexels 收藏/已看/下载记录会被迁移 009 删除
+- 下一步: 看板无 doing / todo，等待用户指定新任务
+
+### 2026-11-06 会话 89（T-58）
+
+- 任务: T-58 空查询首页与切站切换视图（DR-085 / DR-086 / DR-087）
+- 改动文件: `src/shared/sites.ts`（`SiteCapabilities.toplist`、`homeFeedFor`）、`src/main/ipc/handlers/posts-search.ts`（对 `toplist` 站点放行空查询并保留 R18 过滤）、`src/main/sites/wallhaven.ts`（空查询 `sorting=toplist&topRange=1d`）、`src/renderer/pages/SearchPage.tsx`（`feedMode`、启动首页、空查询首页、`kind:'popular'` 首页单页、切站重置到新站点首页、移除 `resultSite` 与归属提示）、`src/renderer/styles/index.css`（删除归属提示样式）、`tests/unit/{constants,wallhaven,posts-search}.test.ts`；`docs/{02,03,04,06,07,09}` 同步
+- 决策: 新增 DR-085（空查询首页 / `homeFeedFor` / wallhaven toplist）；按用户反馈新增 DR-086 修订切站语义——切站按普通页面切换处理，丢弃上一站点列表并回到新站点首页，不自动重搜旧关键词，移除 `resultSite` 与归属提示，翻页/批量统一使用 `site`；实测 konachan 日榜空列表后新增 DR-087——首页改为 `popular_recent period=1d`（单页，两站实测各 40 条）
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0，无输出）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、507/507 条，exit 0）；单测覆盖 `homeFeedFor` 推导、wallhaven 空查询路径与 handler 空查询放行；接口实测：`konachan/yande popular_recent?period=1d` 各 40 条，`konachan popular_by_day` 当天仅 1 条 pending
+- 遗留: P-43 需窗口内验证（启动首页、空查询切站、konachan 首页非空、切站不保留旧站内容、慢请求切站、回车按新站点搜索）
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-43 人工验证
+
+### 2026-11-06 会话 90（T-59）
+
+- 任务: T-59 榜单并入首页（DR-088）
+- 改动文件: `src/renderer/pages/SearchPage.tsx`（`rankingKind` / `rankingDate` + refs、首页按类型/日期请求 `listRankings`、榜单控件、首页空态与计数文案）、`src/renderer/App.tsx`（导航六页、移除 `RankingPage` 与 `searchRequest`）、`src/renderer/styles/index.css`（`.search-date`）、删除 `src/renderer/pages/RankingPage.tsx` 与 `RankingPage.module.css`；文档 02/04/06/07/09 同步
+- 决策: 新增 DR-088。榜单页除类型/日期外与首页完全重复，故删除独立页签；类型与日期作为首页工具条（仅具备 `rankings` 的站点显示），默认热门；提交关键词后隐藏，清空回车恢复；因榜单标签跳转入口消失，移除 App 层 `externalQuery` 与 `SearchPageProps`
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、507/507 条，exit 0）
+- 遗留: P-44 需窗口内验证（导航无榜单页签、类型/日期重载、wallhaven 无榜单控件、搜索与榜单互不干扰）；榜单类型与日期不持久化
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-44 人工验证
+
+### 2026-11-06 会话 91（T-60）
+
+- 任务: T-60 诊断并入设置（DR-089）
+- 改动文件: `src/renderer/App.tsx`（导航五项、移除 `DiagnosticsPage` 页面）、`src/renderer/pages/SettingsPage.tsx`（末端新增「诊断」分组与副标题）、新增 `src/renderer/components/DiagnosticsPanel.tsx` 与 `DiagnosticsPanel.module.css`、删除 `src/renderer/pages/DiagnosticsPage.tsx` 与 `DiagnosticsPage.module.css`；文档 02/03/04/07/09 同步
+- 决策: 新增 DR-089。诊断是低频排障入口，放在设置页与网络/下载配置邻近；页面本身无独立状态，组件化后嵌入不改变 IPC 与六项探针
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、507/507 条，exit 0）
+- 遗留: P-45 需窗口内验证（设置页诊断分组可用、导航无诊断页签、诊断只读不弹 CF）；诊断结果随设置页常驻挂载而保留
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-45 人工验证
+
+### 2026-11-06 会话 92（T-61）
+
+- 任务: T-61 首页翻页到底与加载条抖动修复（DR-090）
+- 改动文件: `src/renderer/pages/SearchPage.tsx`（`pagingErrorRef` / `postsRef`、失败后暂停触底自动重试、手动重试解锁、合并无新增即 `hasMore=false`）、`src/renderer/components/PostGrid.tsx`（加载提示改为固定高度常驻槽位）、`src/renderer/styles/index.css`（`.post-grid__loading` 去掉 sticky、固定 44px）；文档 02/04/07/09 同步
+- 决策: 新增 DR-090。追页未推进（请求失败或返回重复页）后 `hasMore` 仍为 true 是抖动根因：滚动到底的每个事件都会再请求，`loadMore` 开头清错误条、失败后再加回，底部错误条属于 flex 布局导致内容区反复伸缩；原 sticky 加载条还会覆盖末行卡片。修复为失败暂停自动重试 + 无新增即到底 + 固定高度加载槽
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、507/507 条，exit 0）
+- 遗留: P-46 需窗口内验证（日/周/月榜滚到底不再反复请求或抖动、失败时滚动不自动重试且点重试可恢复、重复页不无限加载、加载槽不改变滚动高度）；到底与失败暂停无可视文案，错误条承担重试入口
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-46 人工验证
+
+### 2026-11-06 会话 93（T-62）
+
+- 任务: T-62 榜单期选择与默认期（DR-091）
+- 改动文件: `src/shared/rankings.ts`（`isoWeekOf` / `dateFromIsoWeek` / `isoWeeksInYear` / `defaultRankingDate` / `shiftRankingDate` / `formatRankingPeriodLabel`）、`src/renderer/pages/SearchPage.tsx`（周榜「年 + 周数」、月榜「年 + 月份」下拉，切类默认上一个完整周期，计数行期标签）、`tests/unit/rankings.test.ts`（ISO 周与默认期用例）；文档 02/04/07/09 同步
+- 决策: 新增 DR-091。用户反馈日/周/月榜图片偏少，根因是把「今天」当作三种榜单的锚点，进行中的当天/本周/本月数据不完整；同时周榜应选周数、月榜应选月份。改为完整期默认 + 周数/月份选择，请求参数结构不变（周榜换算为该周周一日期）
+- 验证: `pnpm lint` 通过（`eslint .`，exit 0）；`pnpm typecheck` 通过（`tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json`，exit 0）；`pnpm test` 通过（52 个测试文件、512/512 条，exit 0）
+- 遗留: P-47 需窗口内验证（周榜/月榜下拉可用且不可选未来期、切类默认昨天/上周/上月、切换后按当前站点重载、计数行期标签正确、结果数量与站点完整期一致）；周数为 ISO 8601，站点周界若不同可能偏移一两天
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-47 人工验证
+
+### 2026-11-06 会话 94（T-63）
+
+- 任务: T-63 期榜返回量与翻页（DR-092）
+- 改动文件: `src/shared/rankings.ts`（新增 `rankingDateRange`，`buildRankingPath` 的日/周/月改为 `/post.json?tags=date:… order:score&limit=100&page=N`）、`tests/unit/rankings.test.ts`（日/周/月路径与月末/跨周断言）、`tests/unit/moebooru.test.ts`（榜单路径断言）；文档 02/03/04/06/07/09 同步
+- 决策: 新增 DR-092。经代理实测 `popular_by_day/week/month` 固定 40 条且忽略 `limit`/`page`，是「图片太少」的根因；`/post.json` 的 `date:` 单日/区间 + `order:score` 可用（日榜 83 条、周/月区间前 3 页各 100 条），且排序与原前 40 条大体一致
+- 验证: `pnpm lint` / `pnpm typecheck` / `pnpm test` 结果见本轮回复；新增用例覆盖周区间归一化、月末 28/29/30/31 天与期榜缺失日期
+- 遗留: P-48 需窗口内验证（期榜条数不再截断为 40、周/月可继续翻页、跨月与跨年周区间正确、R18 本地过滤仍生效）；`order:score` 与站点加权排序可能有个别位次差异
+- 下一步: 看板无 doing / todo，等待用户指定新任务，或先完成 §4 的 P-36~P-48 人工验证
+
 ---
 
 ## 6. 下一步（自动接续）
 
 > 新会话按以下字段自动领取任务；字段缺失、与 §2 看板冲突、依赖未满足时，**停止并询问，不要猜**。
 
-- **NEXT_TASK**: 无 —— T-35 已于会话 69 完成客户端部分，看板仅剩 T-34（诊断页），其验收依赖真实网络探测与窗口内目视，等待用户指定
-- **NEXT_REASON**: T-35 的可自动化部分已完成并置 `done`（DR-066），剩余 TC-45 真机升级属于人工验证。看板中没有依赖满足且可离线验收的 `todo`：T-34 需要真实 DNS/TCP/TLS 探测结果与窗口内目视。按 §1 规则，验收只能人工完成时必须停止并说明，不猜、不顺手改做别的任务
-- **NEXT_ACCEPTANCE**: 若用户选 T-34：六项诊断（DNS/TCP/TLS/代理/CF/磁盘）可运行并复制报告，需真实网络与窗口内目视
-- **NEXT_DEPENDS**: T-34 → 真实网络探测 + 日志/诊断基础（03 §9 尚未落地）
-- **NEXT_MANUAL**: P-33（DR-066 设置页「关于与更新」：安装版点检查更新显示版本/进度并重启安装、无新版显示"已是最新版本"、断网只提示失败、`pnpm dev` 与便携版显示"不支持"且按钮禁用）需窗口内确认；TC-45 还需先发布更高版本 GitHub Release（`latest.yml` + `Bluu Setup x.y.z.exe` + blockmap）后用安装版完成一次真实升级；P-32（DR-065 关闭 R18 或 Tab 聚焦开关后整页不位移、顶部导航可见、设置页内容只在自身容器内滚动、其它页面无回归）需窗口内确认；P-31（DR-063 删掉下载目录后点下载应弹目录框、下载中删目录弹框后迁移并完成、取消失败文案为"下载目录不可用，请重新选择目录"、网络失败不弹目录框）需窗口内确认；P-30（DR-061/062 设置页目录选择框、下载写回后的设置同步、切换目录后重新下载迁到新目录）需窗口内确认；P-29（DR-060 关窗即退出：访问过 konachan 后关窗进程应结束、`pnpm dev` 回到命令行；未访问 konachan 同样退出）需窗口内确认；P-28（DR-059 入队前目录选择框：无效目录弹框、取消不入队、选中写回并继续入队、默认目录自动创建）需窗口内目视；P-27（konachan 两站搜索/榜单/下载、切站重搜与标签跳搜索站点归属）与 P-02/P-04（字段结构、图片 cookie）需本地桌面复验；P-26（T-37 黑名单设置页编辑、保存归一化、搜索/榜单过滤与计数提示，含 konachan 生效）需窗口内目视；P-18 / P-23 / P-24 / P-25 等既有待人工项保持原状
-- **NEXT_BLOCKED_NOTE**: 当前无可自动领取任务。下一会话必须先向用户确认是否选 T-34，不得自行挑选；若用户未指定，只做文档/人工清单整理，不改业务代码
+- **NEXT_TASK**: 无
+- **NEXT_REASON**: 会话 94 完成 T-63（期榜返回量与翻页，DR-092）；会话 93 完成 T-62（榜单期选择与默认期，DR-091）；会话 92 完成 T-61（首页翻页到底与加载条抖动，DR-090）；会话 91 完成 T-60（DR-089）；会话 90 完成 T-59（DR-088）；会话 89 完成 T-58（DR-085/086/087）；会话 88 移除 pexels（DR-084），P-38 随之关闭；M6（T-48~T-54）、T-56~T-63 全部任务为 done，看板无 doing / todo 任务，无依赖已满足的自动可领取任务
+- **NEXT_ACCEPTANCE**: 无（需用户指定新任务）
+- **NEXT_DEPENDS**: 无
+- **NEXT_MANUAL**: P-48（T-63 期榜返回量与翻页：日/周/月条数不再截断为 40、周/月可继续翻页、跨月月末与跨年周区间正确、R18 本地过滤仍生效）；P-47（T-62 榜单期选择：周榜「年 + 周数」/月榜「年 + 月份」下拉可用且不可选未来期、切类默认昨天/上周/上月、切换后按当前站点重载、计数行期标签正确、结果数量与站点完整期一致）；P-46（T-61 首页翻页到底：榜单滚到底不再反复请求或抖动、失败时保留错误条且滚动不自动重试、点重试可恢复、重复页视为到底、加载槽不改变滚动高度）；P-45（T-60 诊断并入设置：导航无诊断页签、设置末端诊断分组可运行六项检测与复制报告、只读不弹 CF）；P-44（T-59 首页合并榜单：导航五项、首页榜单类型/期切换按当前站点重载、wallhaven 无榜单控件、搜索与榜单互不干扰）；P-43（T-58 首页与切站切换视图：启动即显示 yande 24h 热门、空查询切站加载各站 24h 热门且 konachan 非空、有查询切站立即丢弃旧站内容并回到新站点首页、回车才按关键词搜索）；P-42（DR-080 窗口尺寸：小屏/高 DPI 启动不超出屏幕、800×560 下各页无横向滚动、大屏仍 1080×720）；P-41（T-57 慢请求期间切站：wallhaven 悬挂时 tab 可点、切回 yande/konachan 立即重搜、旧响应不覆盖）；P-40（T-56 跟随系统代理：Clash 系统代理/规则生效、关闭系统代理不回退、代理异常退出不自动切直连、HTTP/SOCKS5 与直连无回归）；M6 手工验收清单见 09 §4：设置页图库服务密钥保存/掩码（T-49）、P-37 wallhaven、P-39 Bing 1920×1080 与断网重试、TC-52 的 4 站收藏与窄窗导航；另 P-36 关注动态全流程仍需窗口内人工验证；wallhaven / bing 两站 fixtures 待真实 key 实测后替换
 
 后续顺序（按用户指定的优先级推进，并同步更新本字段）：
 
 1. ~~**T-37 标签黑名单**~~：已于会话 60 完成（DR-056），konachan 真实生效已具备代码路径，待 P-26/P-27 复验
 2. ~~**T-28 konachan 适配**~~：已于会话 61 完成可自动化部分（DR-057），整体验收需 P-02/P-04/P-27 真实网络人工复验
 3. ~~**T-35 自动更新**~~：已于会话 69 完成客户端流程（DR-066）；TC-45 真机升级与 P-33 观感待人工验证
-4. **T-34 诊断页**：P1 最后一项，需真实网络探测结果与窗口内目视，等用户指定后领取
+4. ~~**T-34 诊断页**~~：已于会话 70 完成可自动化部分（DR-067）；P-34 真实网络探测结果与窗口观感待人工验证
+5. ~~**T-46 konachan 首访优化**~~：已于会话 71 完成（DR-068）；P-35 预热收益与退出行为待人工验证
+6. ~~**T-47 关注动态**~~：会话 72 实施、会话 74 收尾并置 `done`（DR-069）；**T-55 浏览改版**已于会话 76 置 `done`（DR-072）；P-36 待窗口内人工验证
+7. ~~**M6 多源壁纸接入（T-48~T-54）**~~：T-48 / T-49 / T-50 / T-52 / T-53 / T-54 已于会话 75 / 77 / 78 / 81 / 82 / 83 完成（DR-070 / DR-071 / DR-073 / DR-076 / DR-077）；T-51 / pexels 于会话 88 移除（DR-084）；wallhaven / bing 契约与离线 fixtures 已同步，真实响应待自备 key 实测后替换
+8. ~~**T-56 系统代理跟随模式**~~：已于会话 84 完成（DR-078），设置页可选「跟随系统」、免填端口、`system` 不回退；P-40 待窗口内人工验证
+9. ~~**T-57 慢请求期间允许切站**~~：已于会话 85 完成（DR-079），loading 不再锁站点 tab、切站作废旧响应；P-41 待窗口内人工验证
+10. ~~**T-58 空查询首页与切站切换视图**~~：已于会话 89 完成（DR-085 / DR-086 / DR-087），启动即加载站内 24h 热门、切站按普通页面切换（丢弃旧站列表、回到新站点首页）；P-43 待窗口内人工验证
+11. ~~**T-59 榜单并入首页**~~：已于会话 90 完成（DR-088），导航收敛为六页、首页工具条承载榜单类型与日期；P-44 待窗口内人工验证
+12. ~~**T-60 诊断并入设置**~~：已于会话 91 完成（DR-089），导航收敛为五页、设置末端新增「诊断」分组；P-45 待窗口内人工验证
+13. ~~**T-61 首页翻页到底与加载条抖动修复**~~：已于会话 92 完成（DR-090），失败暂停触底自动重试、无新增即视为到底、加载槽固定高度不覆盖末行；P-46 待窗口内人工验证
+14. ~~**T-62 榜单期选择与默认期**~~：已于会话 93 完成（DR-091），周榜选周数、月榜选月份、切类默认上一个完整周期；P-47 待窗口内人工验证
+15. ~~**T-63 期榜返回量与翻页**~~：已于会话 94 完成（DR-092），日/周/月改用 `date:` 单日/区间 + `order:score`，不再受固定 40 条限制；P-48 待窗口内人工验证
+16. **后续**：完成 P-36~P-48 人工验证后，再等待用户指定新任务
 
 > T-03 结论：`pnpm dist` 产出 NSIS per-user（免管理员）与 portable 两种产物；`release/win-unpacked` 产物已烟测启动窗口与单实例；图标/签名与纯净 Win11 安装验收待人工。**会话 57 起产物改名为 `release/Bluu Setup 0.1.0.exe` / `release/Bluu 0.1.0.exe`（DR-030 的 productName），11-03 旧名产物已按 DR-053 删除。**
 
-> T-04 结论：单实例锁在 ready 前申请，二次启动直接退出并聚焦已有窗口；窗口默认 1280×860、最小 1024×720、`nativeTheme.themeSource='dark'`，尺寸常量在 `shared/constants.ts` 并有单测锁定。
+> T-04 结论：单实例锁在 ready 前申请，二次启动直接退出并聚焦已有窗口；窗口默认 1080×720（按主屏 workArea 的 90% 收敛，DR-080）、最小 800×560、`nativeTheme.themeSource='dark'`，尺寸常量与 `resolveWindowBounds` 在 `shared/constants.ts` 并有单测锁定。
 
 > T-10 结论：`tests/mock/server.ts` 提供 `127.0.0.1` 随机端口与 `/__stats`（次数/时间戳），`x-scenario` 覆盖 ok / 429-3 / challenge-once / challenge-always / timeout；`createHttpClient` 支持注入 `baseUrl`，集成用例实测限速 1.97 req/s、429 按 `Retry-After: 1` 退避、CF 不重试、超时不挂起。
 > T-07 结论：`createHttpClient` 返回 `Result` 信封，限速 2 req/s 且重试也过桶；429 优先 `Retry-After`；404 与 CF 失败不重试。`http-site.ts#getHttpClient` 为站点单例：yande 走 `ses.fetch`，konachan 走 `cloudflare.ts` 窗口通道（DR-010）。

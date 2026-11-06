@@ -194,19 +194,19 @@ describe('moebooru 适配器榜单（DR-041）', () => {
     expect(page.page).toBe(1);
   });
 
-  it('日榜带 year/month/day 与 page', async () => {
+  it('日榜按 date: 单日 + order:score 请求并携带 page（DR-092）', async () => {
     const { client, paths } = fakeClient(readFixture('posts-safe.json'));
     const adapter = createMoebooruAdapter({ site: 'yande', client });
 
     const page = await adapter.rankings('day', { year: 2026, month: 11, day: 4 }, { page: 2 });
 
     expect(paths).toEqual([
-      '/post/popular_by_day.json?year=2026&month=11&day=4&limit=100&page=2'
+      '/post.json?tags=date%3A2026-11-04%20order%3Ascore&limit=100&page=2'
     ]);
     expect(page.page).toBe(2);
   });
 
-  it('周榜带 year/month/day，月榜不带 day', async () => {
+  it('周榜按周区间、月榜按月区间请求', async () => {
     const { client, paths } = fakeClient('[]');
     const adapter = createMoebooruAdapter({ site: 'yande', client });
 
@@ -214,8 +214,8 @@ describe('moebooru 适配器榜单（DR-041）', () => {
     await adapter.rankings('month', { year: 2026, month: 10, day: 4 });
 
     expect(paths).toEqual([
-      '/post/popular_by_week.json?year=2026&month=10&day=26&limit=100&page=1',
-      '/post/popular_by_month.json?year=2026&month=10&limit=100&page=1'
+      '/post.json?tags=date%3A2026-10-26..2026-11-01%20order%3Ascore&limit=100&page=1',
+      '/post.json?tags=date%3A2026-10-01..2026-10-31%20order%3Ascore&limit=100&page=1'
     ]);
   });
 });

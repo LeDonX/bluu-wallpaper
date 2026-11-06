@@ -2,22 +2,24 @@ import { join } from 'node:path';
 
 import { applyHostmap } from '@main/network/hostmap';
 import { openDatabase, type SqlDatabase } from '@main/storage/db';
+import { DB_FILE_NAME, migrateLegacyProfile } from '@main/storage/legacy-profile';
 import { app } from 'electron';
 
 let database: SqlDatabase | null = null;
 
 /**
- * 启动最早阶段执行（app ready 之前）：注入域名映射等开关。
+ * 启动最早阶段执行（app ready 之前）：迁移旧品牌目录，再注入域名映射等开关。
  * 配置改动需重启应用才生效（DR-004 / DR-013）。
  */
 export function bootstrap(): void {
+  migrateLegacyProfile(app.getPath('appData'), app.getPath('userData'));
   applyHostmap();
 }
 
 /** app ready 后调用：打开 userData 下的数据库并执行迁移（幂等） */
 export function initStorage(): void {
   if (database) return;
-  database = openDatabase(join(app.getPath('userData'), 'bluu.db'));
+  database = openDatabase(join(app.getPath('userData'), DB_FILE_NAME));
 }
 
 export function closeStorage(): void {

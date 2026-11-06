@@ -1,10 +1,10 @@
 import { createViewsClearHandler } from '@main/ipc/handlers/views-clear';
 import type { HistoryClearCounts, HistoryStore } from '@main/storage/history';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import { describe, expect, it } from 'vitest';
 
 function createFakeStore(counts: HistoryClearCounts = { views: 3, favorites: 1 }) {
-  const calls: Array<SiteId | undefined> = [];
+  const calls: Array<AnySiteId | undefined> = [];
   const store: Pick<HistoryStore, 'clear'> = {
     clear: (site) => {
       calls.push(site);

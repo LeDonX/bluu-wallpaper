@@ -1,4 +1,4 @@
-# Bluu（蓝噗）架构文档
+# LePic 架构文档
 
 | 项 | 内容 |
 |---|---|
@@ -63,7 +63,7 @@
 
 ## 3. 目录结构
 
-> 2026-11-05/T-33 按仓库实际文件核对；未列出的目录（如 `diag/`、`renderer/store/`、`download/resume.ts`）尚未创建。
+> 2026-11-06/T-34 按仓库实际文件核对；诊断目录实际为 `main/diagnostics/`；未列出的目录（如 `renderer/store/`、`download/resume.ts`）尚未创建。
 
 ```
 booru-desktop/
@@ -86,35 +86,41 @@ booru-desktop/
 │   │   │   ├── image-loader.ts      images:fetch 流式读取
 │   │   │   └── proxy.ts             代理应用、复检、探测与回退
 │   │   ├── sites/
-│   │   │   ├── moebooru.ts          公共实现（搜索 / 榜单 / 联想 / 归一化）
-│   │   │   ├── adapters.ts          按站点缓存的适配器单例（yande / konachan，DR-057）
+│   │   │   ├── moebooru.ts          公共实现（搜索 / 榜单 / 联想 / 归一化；yande / konachan）
+│   │   │   ├── wallhaven.ts         wallhaven `/api/v1/search` 适配器（T-50 / DR-073）
+│   │   │   ├── bing.ts              Bing 每日壁纸适配器（T-52 / DR-076）
+│   │   │   ├── types.ts             `SiteAdapter` 最小契约（search 必选，rankings / suggestTags / daily 可选）
+│   │   │   ├── adapters.ts          按站点缓存的适配器单例与密钥注入（DR-057 / DR-070）
 │   │   │   └── query.ts             搜索语法解析
 │   │   ├── download/
 │   │   │   ├── queue.ts             并发调度、续传、校验、暂停、重试、删除
 │   │   │   └── destination.ts       入队前目录校验与选择框接线（DR-059）
 │   │   ├── update/
 │   │   │   └── service.ts           自动更新状态机与 electron-updater 接线（DR-066）
+│   │   ├── subscriptions/
+│   │   │   └── service.ts           关注刷新：R18/黑名单过滤、站点串行、首次哨兵（DR-069）
 │   │   ├── storage/
 │   │   │   ├── db.ts                连接、迁移执行
-│   │   │   ├── migrations/001_init.sql ~ 005_downloads_md5.sql
-│   │   │   └── downloads.ts / favorites.ts / history.ts / tags.ts / views.ts
+│   │   │   ├── migrations/001_init.sql ~ 008_posts_source.sql
+│   │   │   └── downloads.ts / favorites.ts / history.ts / subscriptions.ts / tags.ts / views.ts
 │   │   ├── ipc/
 │   │   │   ├── registry.ts          channel 注册与依赖接线
 │   │   │   ├── *-input.ts           zod 入参 schema
-│   │   │   └── handlers/            posts / tags / views / favorites / downloads / settings / images
+│   │   │   └── handlers/            posts / tags / views / favorites / follows / downloads / settings / images
 │   ├── preload/
 │   │   └── index.ts                 contextBridge 暴露 booru API
 │   ├── renderer/
-│   │   ├── App.tsx                  顶部五页导航（外壳 T-38~ 前的最小实现）
+│   │   ├── App.tsx                  顶部七页导航（外壳 T-38~ 前的最小实现，含每日壁纸与诊断）
 │   │   ├── image-store.ts           blob 图片缓存（最多 3 张）
 │   │   ├── hooks/useImageSnapshot.ts
-│   │   ├── pages/                   Search / Ranking / Favorites / Downloads / Settings
-│   │   ├── components/              PostGrid / PostCard / SearchBar / ImageViewer / Zoom / 任务与设置组件
+│   │   ├── pages/                   Search / Ranking / Daily / Favorites / Downloads / Settings / Diagnostics
+│   │   ├── components/              PostGrid / PostCard / SearchBar / ImageViewer / FollowsPanel / Zoom / 任务与设置组件
 │   │   └── styles/                  tokens.css + index.css
-│   └── shared/                      纯类型/常量/纯函数（ipc-contract、models、downloads、settings、proxy、
-│                                    rankings、selection、error-guidance、viewer、badges、updates 等）
+│   └── shared/                      纯类型/常量/纯函数（ipc-contract、models、downloads、settings、providers、
+│                                    sites（含 `SITE_CAPABILITIES`）、proxy、rankings、selection、error-guidance、
+│                                    viewer、badges、updates、subscriptions 等）
 └── tests/
-    ├── unit/                        查询解析、命名模板、适配器（fixtures）、队列、handler、纯函数
+    ├── unit/                        查询解析、命名模板、适配器（fixtures）、队列、handler、纯函数、关注存取与刷新
     ├── integration/                 本地 mock server（限速/重试/CF 识别）
     └── mock/server.ts
 ```
@@ -176,8 +182,8 @@ async function acquireClearance(site: SiteId): Promise<void> {
     webPreferences: { partition: `persist:${site}` },
   });
   await win.loadURL(siteBaseUrl(site));      // 触发挑战并自动求解
-  await pollCookie(ses, 'cf_clearance', 25_000); // 轮询，命中即返回
-  win.destroy();
+  await pollCookie(ses, 'cf_clearance', 25_000); // 每 400ms 轮询，命中即返回（DR-068）
+  // 窗口不销毁：后续 konachan 请求在该窗口上下文执行，will-quit 时统一销毁
 }
 ```
 
@@ -187,7 +193,9 @@ async function acquireClearance(site: SiteId): Promise<void> {
 - 所有请求走 Electron 网络栈，不混用 node 的 `https` / `axios`：yande 用 `ses.fetch`；konachan 的 `ses.fetch` 实测仍被 CF 403，改用隐藏窗口上下文 fetch（07 DR-010）
 - 应用**不得禁用硬件加速**（`app.disableHardwareAcceleration()`），否则挑战脚本执行失败（07 DR-012）
 - 全局单飞锁：同一站点并发触发时只开一个窗口
-- 失败后提供"手动验证"按钮（显示窗口让用户点击）
+- **启动预热**（DR-068）：app ready 且主窗口创建后，后台调用 `prewarmKonachan()`——先 `ensureClearance()` 再 `ensurePage()`，把首次验证成本从"用户点击后"挪到启动阶段；失败静默，真实请求仍按原逻辑重试/报错。隐藏窗口因此常驻，`will-quit` 统一销毁（DR-060 的退出修复不受影响）
+- cookie 轮询间隔 400ms（原 1s，DR-068）；CF 挑战本身的 JS 执行时间无法缩短，25s 上限不变
+- 手动验证按钮仍未实现（`cf:manualVerify` 为独立任务，03 §7）；当前失败时由错误卡片引导稍后重试或重启应用
 
 ### 4.4 HTTP 层
 
@@ -212,12 +220,14 @@ interface HttpOptions {
 ses.setProxy({ mode: 'fixed_servers', proxyRules: 'socks5://127.0.0.1:1080' });
 ```
 
-- 支持直连 / HTTP / SOCKS5，配置存 `config.json#network.proxy`（`{mode, host, port}`），改动重启生效（DR-039）
-- 应用后对两站 session 逐个 `setProxy`，并用 `resolveProxy(url)` 复检实际生效模式
-- 规则非法、复检无法识别或返回 `DIRECT` 时立即回退直连
-- 非直连时启动后探测一次站点 API（`/post.json?limit=1`，8s 超时、0 重试）；仅 `NETWORK` / `TIMEOUT` 判定不可达并回退，429 / 5xx / CF 视为代理可用
+- 支持直连 / 跟随系统 / HTTP / SOCKS5，配置存 `config.json#network.proxy`（`{mode, host, port}`，默认 `direct`），改动重启生效（DR-039）
+- `direct` 与 `system` 不生成固定规则串；`system` 映射为 `setProxy({mode:'system'})`，由 Chromium 读取 Windows 系统代理（含 PAC，DR-078）
+- 应用后对全部站点 session 逐个 `setProxy`，并用 `resolveProxy(url)` 复检实际生效模式
+- 仅 HTTP / SOCKS5：规则非法、复检无法识别或返回 `DIRECT` 时立即回退直连
+- 仅 HTTP / SOCKS5：启动后探测一次站点 API（`/post.json?limit=1`，8s 超时、0 重试）；`NETWORK` / `TIMEOUT` 判定不可达并回退，429 / 5xx / CF 视为代理可用
+- `system` 不做回退：系统代理关闭时复检返回 `DIRECT` 属正常状态，回退会覆盖用户意图；代理软件退出导致的失败按普通网络错误展示
 - 回退原因经 `network:status` 读取、`network:status-changed` 广播，界面横幅提示
-- 代理编辑 UI 已由设置页提供（DR-040）；T-09 保证应用、复检、回退与提示
+- 代理编辑 UI 已由设置页提供（DR-040）；T-09 保证应用、复检、回退与提示；`system` 模式下地址与端口输入禁用（DR-078）
 
 ### 4.6 降级策略
 
@@ -244,6 +254,20 @@ export interface MoebooruAdapter {
 
 `MoebooruAdapter` 实现公共逻辑，两个站点仅注入 `baseUrl` 与网络策略（konachan 走 CF 通道）。`main/sites/adapters.ts#getSiteAdapter(site)` 按 `SiteId` 缓存单例；IPC handler 注入 `getAdapter(site)` 后在每次请求时按入参站点取用（T-28 / DR-057）。
 
+多源站点统一实现 `SiteAdapter`（DR-070）：`search` 必选，`rankings` / `suggestTags` / `daily`（DR-076）为可选能力；能力有无以 `SITE_CAPABILITIES` 为准，handler 收到缺失能力的请求按 `CONFIG` 拒绝。
+
+站点标识分为两层：`SiteId = 'yande' | 'konachan'`（moebooru 公共适配器与 CF/网络通道沿用），`AnySiteId = SiteId | 'wallhaven' | 'bing'`（`Post.site`、收藏/已看/下载主键与搜索类 IPC 入参，T-50 / DR-073；pexels 已于 DR-084 移除）。能力表（T-48 / T-53 / DR-070 / 077）：
+
+| 站点 | search | rankings | suggest | needsKey | toplist | daily | resolutionFilter |
+|---|---|---|---|---|---|---|---|
+| yande / konachan | ✓ | ✓ | ✓ | — | — | — | ✓ |
+| wallhaven | ✓ | — | — | ✓ | ✓（空查询走 24h 热门） | — | ✓ |
+| bing | — | — | — | — | — | ✓ | — |
+
+第三方站点不走 CF 通道，统一使用普通 `ses.fetch`（`http-site.ts` 注入的站点客户端）；密钥在 `adapters.ts` 构造时从 `Settings.providers` 读取，每次请求取最新值。
+
+首页来源由 `homeFeedFor(site)` 按能力表推导：具备 `rankings` → 24 小时热门（`listRankings({kind:'popular'})`，单页；konachan 的 `popular_by_day` 在当天结束前几乎为空，故首页不用当日榜，DR-087），具备 `toplist` → wallhaven 空查询 24 小时热门（可翻页）；搜索页用 `feedMode`（`search` / `home`）区分请求路径。切站按普通页面切换处理：直接以新站点重置列表并加载其首页，翻页与批量下载始终使用当前选中站点（T-58 / DR-086）。
+
 ### 5.1 端点映射
 
 | 能力 | 端点 |
@@ -251,17 +275,19 @@ export interface MoebooruAdapter {
 | 搜索 | `/post.json?tags=&page=&limit=100` |
 | 游标翻页 | `/post.json?tags=<原查询> id:<lastId>&limit=100` |
 | 热门 | `/post/popular_recent.json?period=1d`（DR-041：固定 40 条、忽略 `limit`/`page`，只取第 1 页） |
-| 日榜 | `/post/popular_by_day.json?year=&month=&day=&limit=100&page=` |
-| 周榜 | `/post/popular_by_week.json?year=&month=&day=&limit=100&page=` |
-| 月榜 | `/post/popular_by_month.json?year=&month=&limit=100&page=` |
+| 日榜 | `/post.json?tags=date:<YYYY-MM-DD> order:score&limit=100&page=`（DR-092） |
+| 周榜 | `/post.json?tags=date:<该周周一>..<该周周日> order:score&limit=100&page=`（ISO 周，DR-092） |
+| 月榜 | `/post.json?tags=date:<当月1日>..<当月月末> order:score&limit=100&page=`（DR-092） |
 | 标签 | `/tag.json?name=<prefix>*&limit=10` |
 | 评论 | `/comment.json?post_id=` |
+
+第三方站点走独立适配器（DR-070）：wallhaven `/api/v1/search`、bing `/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN`（DR-076）。
 
 ### 5.2 归一化 Post
 
 ```ts
 interface Post {
-  site: SiteId;
+  site: AnySiteId;                               // 多源站点标识（DR-070 / DR-073）
   id: number;
   md5: string;
   previewUrl: string;
@@ -281,11 +307,12 @@ interface Post {
 }
 ```
 
-归一化三条硬规则（详见 06-API-Contract.md）：
+归一化硬规则（详见 06-API-Contract.md）：
 
-1. `rating`：`s → safe`、`q → questionable`、`e → explicit`
-2. `created_at`：epoch 秒 × 1000
-3. 丢弃 `status !== 'active'` 的条目
+1. `rating`：`s → safe`、`q → questionable`、`e → explicit`（第三方站点按各自字段映射，见 06 §7）
+2. `created_at`：epoch 秒 × 1000（wallhaven 为 UTC 字符串、bing 为本地零点，均在适配器内换算）
+3. 丢弃 `status !== 'active'` 的条目（仅 moebooru）
+4. 无 md5 站点（wallhaven / bing）`md5` 置空串、`tags` 置空数组，下载身份键与命名回退 `{site}_{id}`（DR-070）
 
 适配器负责把 moebooru 的 `tags` 字符串（空格分隔）解析为带类型标签；类型可来自 `/tag.json` 缓存，缺失时标为 `general`。
 
@@ -374,9 +401,31 @@ CREATE TABLE search_history (
   use_count INTEGER NOT NULL DEFAULT 1
 ) WITHOUT ROWID;
 CREATE INDEX idx_search_history_last ON search_history(last_used_at);
+
+-- 迁移 007：关注标签与作品关联（T-47 / DR-069）
+CREATE TABLE subscriptions (
+  site TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  created_at INTEGER NOT NULL,            -- epoch 毫秒
+  initialized INTEGER NOT NULL DEFAULT 0, -- 0 = 首次拉取尚未成功；成功后置 1 并全标已读
+  last_seen_post_id INTEGER NOT NULL DEFAULT 0,
+  last_checked_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (site, tag)
+) WITHOUT ROWID;
+
+CREATE TABLE subscription_posts (
+  site TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  post_id INTEGER NOT NULL,
+  first_seen_at INTEGER NOT NULL,
+  unread INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (site, tag, post_id)
+) WITHOUT ROWID;
+CREATE INDEX idx_subscription_posts_seen ON subscription_posts(site, first_seen_at);
+CREATE INDEX idx_subscription_posts_unread ON subscription_posts(site, unread);
 ```
 
-> 当前未建 `sites` 表；站点标识由代码常量 `SITE_IDS` 提供。迁移 006 已建 `search_history`（T-36 / DR-055）。
+> 当前未建 `sites` 表；站点标识由代码常量 `SITE_IDS` 提供。迁移 006 已建 `search_history`（T-36 / DR-055），迁移 007 已建 `subscriptions` / `subscription_posts`（T-47 / DR-069）。作品快照复用 `posts` 表，读取时 `INNER JOIN subscriptions` + `LEFT JOIN posts` 排除取消关注后残留的孤儿条目；取消关注在事务内级联删除关联行。
 
 ### 6.2 批量查询已看状态
 
@@ -389,7 +438,7 @@ better-sqlite3 同步执行，毫秒级。渲染层用 `Set<number>` 缓存当�
 
 ### 6.3 缓存策略
 
-- 缩略图磁盘缓存（`%LOCALAPPDATA%\bluu\thumbs`，LRU 2GB）尚未实现，`booru://thumb` 协议同属待办（DR-016）
+- 缩略图磁盘缓存（`%LOCALAPPDATA%\lepic\thumbs`，LRU 2GB）尚未实现，`booru://thumb` 协议同属待办（DR-016）
 - 元数据：当前不写搜索结果的 `posts` 快照（仅收藏时由 `favorites:toggle` 写入），因此没有 TTL 刷新逻辑；收藏页只读本地快照
 - 查看器图片：渲染层内存缓存最多 3 张（`image-store.ts`），磁盘不缓存
 - HTTP 缓存由 session 自带，不额外做
@@ -402,10 +451,11 @@ better-sqlite3 同步执行，毫秒级。渲染层用 `Set<number>` 缓存当�
 
 | channel | 参数 | 返回 |
 |---|---|---|
-| `posts:search` | `{site, query, page?, lastId?}` | `PostPage`（`page` 与 `lastId` 二选一，都缺省取第 1 页） |
+| `posts:search` | `{site, query, page?, lastId?}`（`site` 为 `AnySiteId`，且须具备 `search` 能力；具备 `toplist` 的站点允许空查询走首页热门，DR-085） | `PostPage`（`page` 与 `lastId` 二选一，都缺省取第 1 页） |
 | `images:fetch` | `{requestId, url}` | `{mimeType, bytes: ArrayBuffer}`（仅 `https:` 且图片域名白名单；主进程流式读取并发送进度事件） |
-| `posts:rankings` | `{site, kind, date?, page?}`（`kind` 为 `popular` / `day` / `week` / `month`；`date` 为期榜必填的 `{year, month, day}`，DR-041；两站均支持，DR-057） | `PostPage`（`r18Filtered` 表示因 R18 关闭而过滤了 explicit 条目；`blacklistFiltered` 为本地按黑名单丢弃的条目数，DR-056） |
-| `tags:suggest` | `{site, prefix}` | `TagSuggestion[]` |
+| `posts:rankings` | `{site, kind, date?, page?}`（`kind` 为 `popular` / `day` / `week` / `month`；`date` 为期榜必填的 `{year, month, day}`，DR-041；仅具备 `rankings` 能力的 yande / konachan，DR-057 / 077） | `PostPage`（`r18Filtered` 表示因 R18 关闭而过滤了 explicit 条目；`blacklistFiltered` 为本地按黑名单丢弃的条目数，DR-056） |
+| `daily:list` | `{site}`（须具备 `daily` 能力，当前为 bing，DR-076） | `PostPage`（固定最近 8 天并按日期倒序；`id` 取 `enddate` 的 `YYYYMMDD`，`createdAt` 为本地零点，`source` 为版权文案） |
+| `tags:suggest` | `{site, prefix}`（仅具备 `suggest` 能力的 yande / konachan） | `TagSuggestion[]` |
 | `views:mark` | `{site, postIds[]}`（1–100 个） | `Result<null>`（成功即 `ok`） |
 | `views:list` | `{site, postIds[]}`（1–100 个） | `number[]`（其中已看过的 `postId`） |
 | `views:clear` | `{site?}`（缺省为全部站点，DR-033） | `Result<{site, clearedViews, clearedFavorites}>` |
@@ -418,8 +468,9 @@ better-sqlite3 同步执行，毫秒级。渲染层用 `Set<number>` 缓存当�
 | `downloads:clear` | — | `{removed}`（清空任务记录并清理 `.part`，保留最终文件，DR-044） |
 | `downloads:list` | — | `DownloadTask[]` |
 | `network:status` | — | `Result<ProxyStatus>`（`{configured, effective, fallback, reason}`，DR-039） |
+| `diag:run` | `{site}` | `Result<DiagReport>`（`{site, ranAt, items[]}`；六项依次为 `dns` / `tcp` / `tls` / `proxy` / `cf` / `disk`，每项含 `status` / `detail` / `advice` / `durationMs`；单项失败归一化进报告，不抛错，T-34 / DR-067） |
 | `settings:get` | — | `Result<SettingsSnapshot>`（`{settings, defaultDownloadDir}`，DR-040） |
-| `settings:set` | `Settings`（`hostmap` / `network` / `downloads` / `content` 全量，zod + 语义校验；`content.blacklist` 保存前归一化为小写并去重，DR-056） | `Result<SettingsSetResult>`（`{settings, defaultDownloadDir, proxyStatus, restartRequired}`；非法值返回 `CONFIG`） |
+| `settings:set` | `Settings`（`hostmap` / `network` / `downloads` / `providers` / `content` 全量，zod + 语义校验；`content.blacklist` 保存前归一化为小写并去重，DR-056；`providers` 的非空密钥保存前 trim，报错不回显密钥，DR-071） | `Result<SettingsSetResult>`（`{settings, defaultDownloadDir, proxyStatus, restartRequired}`；非法值返回 `CONFIG`） |
 | `settings:pick-download-dir` | `{current?}`（设置页草稿目录，可用时作为对话框起始目录，DR-061） | `Result<string \| null>`（取消返回 `null`；非法入参返回 `CONFIG`） |
 | `settings:destination-changed`（主→渲染广播） | `{destinationDir}`（下载入队前目录校验写回设置后广播，DR-061） | — |
 | `search-history:list` | — | `Result<string[]>`（最近使用优先，最多 50 条，DR-055） |
@@ -430,10 +481,16 @@ better-sqlite3 同步执行，毫秒级。渲染层用 `Set<number>` 缓存当�
 | `updates:check` | — | `Result<UpdateState>`（手动检查；开发模式/便携版返回 `phase:'unsupported'`，不报错） |
 | `updates:download` | — | `Result<UpdateState>`（须先处于 `available`，否则返回 `CONFIG`；进度经 `updates:status` 推送） |
 | `updates:install` | — | `Result<null>`（须处于 `downloaded`；调用 `quitAndInstall(false, true)` 重启安装） |
+| `follows:list` | `{site}` | `Result<SubscriptionSummary[]>`（`{site, tag, createdAt, lastCheckedAt, postCount, unreadCount}`，DR-069） |
+| `follows:add` | `{site, tag}`（`tag` 经 `normalizeFollowTag` 归一化为小写，拒绝空/空白/超长/`-` 开头/含 `:`） | `Result<FollowAddResult>`（`{subscription, newPosts, warning}`）；黑名单标签返回 `CONFIG`；已存在直接返回现有摘要；首次拉取失败保留订阅并 `warning` 提示稍后刷新重试 |
+| `follows:remove` | `{site, tag}` | `Result<null>`（事务内级联删除 `subscription_posts`） |
+| `follows:timeline` | `{site}` | `Result<SubscriptionTimeline>`（`{entries, groups, unreadTotal}`；`entries` 按 `(site, postId)` 去重、按首次发现时间倒序，`groups` 为按关注分组） |
+| `follows:refresh` | `{site}` | `Result<FollowRefreshResult>`（`{site, checked, added, unread, failedTags}`；同站点并发调用复用同一 Promise；仅完成后广播 `follows:updated`） |
+| `follows:mark-read` | `{site, tag?, postIds?}`（`postIds` 优先，其次按 `tag`，都缺省清整站；`postIds` 1–100 个） | `Result<null>` |
 
-> 上表与 `src/shared/ipc-contract.ts#IPC_CHANNELS` 一一对应（2026-11-05/T-33 核对）。`views:stats`、`diag:run`、`cf:manualVerify` 与 `cf:status` 尚未实现（分别随查看器信息栏统计、T-34 诊断页、CF 手动验证任务落地），不得提前在渲染层调用。
+> 上表与 `src/shared/ipc-contract.ts#IPC_CHANNELS` 一一对应（2026-11-06/T-47 核对）。`views:stats`、`cf:manualVerify` 与 `cf:status` 尚未实现（分别随查看器信息栏统计、CF 手动验证任务落地），不得提前在渲染层调用；`diag:run` 已于 T-34 落地（DR-067）。
 
-事件（主→渲染）：`downloads:progress`（`{taskId, site, postId, status, bytesDone, bytesTotal, error}`，按任务约 200ms 节流，状态变化时强制上报）、`views:updated`（`{site: SiteId | null}`，`null` 表示全部站点；清除记录成功后广播，DR-033）、`images:progress`（`{requestId, loaded, total|null}`，约 100ms 节流）、`network:status-changed`（`ProxyStatus`，代理回退后广播，DR-039）、`updates:status`（`UpdateState` 全量，每次状态变化与下载进度广播，DR-066）。`cf:status` 为设计预留，当前无广播。
+事件（主→渲染）：`downloads:progress`（`{taskId, site, postId, status, bytesDone, bytesTotal, error}`，按任务约 200ms 节流，状态变化时强制上报）、`views:updated`（`{site: SiteId | null}`，`null` 表示全部站点；清除记录成功后广播，DR-033）、`images:progress`（`{requestId, loaded, total|null}`，约 100ms 节流）、`network:status-changed`（`ProxyStatus`，代理回退后广播，DR-039）、`updates:status`（`UpdateState` 全量，每次状态变化与下载进度广播，DR-066）、`follows:updated`（`{site}`，每次关注刷新完成后广播一次，页面据此重载列表与未读计数，DR-069）。`cf:status` 为设计预留，当前无广播。
 
 ---
 
@@ -472,7 +529,7 @@ enqueue → 队列（每站点独立）
 ## 9. 日志与诊断
 
 - **日志落盘尚未实现**：当前项目未引入 electron-log，渲染层也无 console 残留；05 §8 的必记字段、轮转与脱敏规则为待落地的规范
-- 诊断（DNS / TCP / TLS / CF / 代理）归 T-34，对应 `diag:run` 尚未实现；当前排障依赖设置页状态与错误卡片错误码
+- 诊断已随 T-34 落地为 `diag:run`：主进程 `main/diagnostics/service.ts` 负责编排，`probes.ts` 提供 DNS / TCP / TLS 直连探测；启用了 hostmap 时 TCP/TLS 探测映射 IP（`servername` 仍为站点域名），未启用时回退系统 DNS；代理、CF、下载目录读取现有主进程状态；磁盘项复用 DR-063 的 `isUsableDirectory`，未配置的默认目录缺失时先创建再判定（与 DR-059 首次下载一致，用户配置的目录不会被自动创建）。六项独立结算，单项异常不中断报告；诊断不主动触发 CF 挑战窗口（DR-067）。日志落盘仍未实现，见上条
 
 ---
 
@@ -480,8 +537,8 @@ enqueue → 队列（每站点独立）
 
 ```yaml
 # electron-builder.yml（与仓库当前文件一致）
-appId: com.bluu.app
-productName: Bluu
+appId: com.lepic.app
+productName: LePic
 copyright: Copyright © 2026 LeDon
 directories:
   output: release
@@ -499,29 +556,29 @@ win:
     - target: portable
       arch: [x64]
 nsis:
-  perMachine: false          # per-user：安装到 %LOCALAPPDATA%\Programs\bluu
+  perMachine: false          # per-user：安装到 %LOCALAPPDATA%\Programs\lepic
   allowElevation: false      # 不触发管理员提权
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Bluu
+  shortcutName: LePic
   deleteAppDataOnUninstall: false   # 卸载保留用户数据
 publish:
   provider: github
   owner: LeDonX
-  repo: bluu-wallpaper             # DR-066：自动更新走 GitHub Release
+  repo: bluu-wallpaper             # DR-066：GitHub 仓库暂未改名，改名后同步此处
 ```
 
 打包事实与前置条件（DR-053，2026-11-05 会话 57 实测）：
 
-- 产物为 `release/Bluu Setup 0.1.0.exe`（NSIS per-user 安装包）与 `release/Bluu 0.1.0.exe`（portable）；旧工程名产物已删除，安装/验收以这两个文件名为准
+- 产物为 `release/LePic Setup 0.1.0.exe`（NSIS per-user 安装包）与 `release/LePic 0.1.0.exe`（portable）；历史产物 `Bluu Setup 0.1.0.exe` / `Bluu 0.1.0.exe` 为改名前的验收记录，新产物以 LePic 命名
 - `out/main` 由 `externalizeDepsPlugin` 保留为 `require(...)`，因此 `better-sqlite3`、`zod`、`@tanstack/react-virtual`（以及 react / react-dom）必须打进 `app.asar`；验收基线为新 `app.asar` 971 项
 - `asarUnpack: '**/*.node'` 把 `better_sqlite3.node` 解包到 `app.asar.unpacked\node_modules\better-sqlite3\build\Release\`；`.node` 必须匹配 Electron 33 的 ABI 130
 - 打包机需具备 VS Build Tools，或提前放入 npmmirror 的 `better-sqlite3-v11.10.0-electron-v130-win32-x64` 预编译包（本次采用后者）。无法重建时应使用 `--config.npmRebuild=false`，否则 `@electron/rebuild` 失败会删除已有二进制并打出不可用的包
-- 卸载口径：`perMachine:false` + `deleteAppDataOnUninstall:false`，卸载只删除安装目录，`%APPDATA%\bluu`（`config.json`、`bluu.db`、站点 `Partitions`）按设计保留，不应视为残留
+- 卸载口径：`perMachine:false` + `deleteAppDataOnUninstall:false`，卸载只删除安装目录，`%APPDATA%\lepic`（`config.json`、`lepic.db`、站点 `Partitions`）按设计保留，不应视为残留
 - 未配置应用图标（使用 Electron 默认图标）、未配置代码签名，安装时会出现 SmartScreen 提示
-- 自动更新（T-35 / DR-066）：使用 `electron-updater`，`publish.provider=github` 会在打包时生成 `app-update.yml`，并在 `release/` 产出 `latest.yml`；发布时需把 `latest.yml` 与 `Bluu Setup x.y.z.exe`（及 blockmap）一起上传到 GitHub Release。**仅 NSIS 安装版支持**；portable 版与 `pnpm dev`（未打包）在设置页显示"不支持"说明。`autoDownload=false`，检查/下载/安装由用户手动触发；`autoInstallOnAppQuit=true`，下载完成后退出应用也会安装。未签名安装包的升级链路仍需真机验证（见 07 §6）
+- 自动更新（T-35 / DR-066）：使用 `electron-updater`，`publish.provider=github` 会在打包时生成 `app-update.yml`，并在 `release/` 产出 `latest.yml`；发布时需把 `latest.yml` 与 `LePic Setup x.y.z.exe`（及 blockmap）一起上传到 GitHub Release。**仅 NSIS 安装版支持**；portable 版与 `pnpm dev`（未打包）在设置页显示"不支持"说明。`autoDownload=false`，检查/下载/安装由用户手动触发；`autoInstallOnAppQuit=true`，下载完成后退出应用也会安装。未签名安装包的升级链路仍需真机验证（见 07 §6）
 - 打包环境注意（本机无 Visual Studio）：`electron-builder` 默认会对 `better-sqlite3` 执行 `npmRebuild`，缺少 MSVC 时会在 node-gyp 阶段失败。先确保 `better-sqlite3/build/Release/better_sqlite3.node` 为 Electron ABI 版本（可从已生成的 `release/win-unpacked/resources/app.asar.unpacked/...` 恢复），再用 `pnpm exec electron-builder --win --publish always --config.npmRebuild=false` 打包；发布命令需要用户级环境变量 `GH_TOKEN`（`Contents: Read and write`），electron-builder 先创建 Draft Release，需把 Draft 发布为正式 Release 后 `electron-updater` 才能读取 `latest.yml`
 
 ---
@@ -530,7 +587,7 @@ publish:
 
 | 面 | 措施 |
 |---|---|
-| 渲染层 | `contextIsolation:true`、`nodeIntegration:false`、`sandbox:true`；**CSP 尚未配置**（DR-016 计划的 `img-src` 白名单未落地） |
+| 渲染层 | `contextIsolation:true`、`nodeIntegration:false`、`sandbox:true`；`index.html` 已配置 CSP（`default-src 'self'`，`img-src` 白名单含 yande / konachan / wallhaven / bing 图片域名，T-48；pexels 已移除，DR-084） |
 | 外链 | `setWindowOpenHandler` 一律 `deny`；`https://` 链接交给 `shell.openExternal`，其余协议不打开 |
 | 导航 | 尚无 `will-navigate` 拦截（窗口仅加载本地页面或 dev server） |
 | 文件 | 下载文件名清洗（`\/:*?"<>|`），限制长度，禁止 `..` |
@@ -543,7 +600,7 @@ publish:
 
 | 层次 | 工具 | 覆盖 |
 |---|---|---|
-| 单元 | Vitest（`tests/unit`，当前 40 个文件 / 344 条） | 查询解析、命名模板、moebooru 归一化（离线 fixtures）、队列、IPC handler、渲染层纯函数 |
+| 单元 | Vitest（`tests/unit`，当前全部测试合计 52 个文件 / 507 条） | 查询解析、命名模板、moebooru 归一化（离线 fixtures）、wallhaven / bing 适配器（离线 fixtures）、队列、IPC handler、渲染层纯函数、关注存取/刷新与日期分组 |
 | 集成 | Vitest + 本地 mock server（`tests/integration`、`tests/mock/server.ts`） | 分页游标、限速、重试、错误分类、CF 识别 |
 | E2E | 尚未实现（无 Playwright 用例） | 窗口内流程依赖人工验收（04 §5 / 07 §6 NEXT_MANUAL） |
 | 网络冒烟 | 手动脚本（`scripts/spike-cf.cjs` / `spike-sessions.cjs` / `spike-sqlite.cjs`） | yande / konachan 真实请求与 ABI 复验（不纳入 CI） |
@@ -576,3 +633,11 @@ publish:
 | 2026-11-05 | T-28 / DR-057（会话 61）：§3 `sites/` 以 `adapters.ts` 替代 `yande.ts`；§5 补 `getSiteAdapter(site)` 与 handler 的站点路由；§7 `posts:rankings` 去掉"仅 yande"限制 |
 | 2026-11-05 | T-33 文档同步（会话 58）：§1.2 改为 CSS Modules / React 本地状态 / 未引入 electron-log；§2 图片通道改为 `images:fetch` + `blob:`；§3 目录树按仓库实际文件重写；§5 适配器接口改为 `MoebooruAdapter` 并补 `jpegUrl` / `jpegFileSize`；§6.1 补迁移 002–005、移除未建的 `sites` / `search_history`；§6.3 标注缩略图缓存未实现；§7 按 `IPC_CHANNELS` 核对并标注未实现通道；§8 补多格式任务身份；§9 日志落盘未实现；§10 按实际 `electron-builder.yml` 与 DR-053 补产物名、依赖完整性、`asarUnpack`、ABI 130 与卸载数据口径；§12 改为单元 + 集成实测口径（无 E2E） |
 | 2026-11-05 | T-35 / DR-066（会话 69）：§3 新增 `update/service.ts` 与 `shared/updates.ts`；§7 新增 `updates:get-state` / `check` / `download` / `install` 与 `updates:status` 广播；§10 补 `publish.provider=github`、`latest.yml` 发布要求、仅 NSIS 安装版可更新、`autoDownload=false` 与未签名链路待真机验证 |
+| 2026-11-06 | T-47 / DR-069（会话 72）：§3 新增 `main/subscriptions/service.ts`、`storage/subscriptions.ts`、`shared/subscriptions.ts` 与 `components/FollowsPanel`；§6.1 新增迁移 007（`subscriptions` / `subscription_posts`）与孤儿/级联说明；§7 新增 6 个 `follows:*` 通道与 `follows:updated` 广播；§12 更新单测口径为 48 文件 / 449 条 |
+| 2026-11-06 | T-52 / DR-076（会话 81）：§5 补多源 `SiteAdapter` 的 `daily` 可选能力与 bing 端点；§7 新增 `daily:list`（最近 8 天、日期倒序、本地零点与版权文案归一化）；§12 单测口径更新为 53 文件 / 507 条 |
+| 2026-11-06 | T-54（会话 83）：§3 目录补 `sites/{wallhaven,pexels,bing,types}.ts`、迁移 008、Daily/Diagnostics 页面；§5 增加 `SiteId` / `AnySiteId` 与能力表、无 md5 归一化；§5.2 `Post.site` 改为 `AnySiteId`；§7 `posts:search` / `rankings` / `tags:suggest` 标注能力门禁，`settings:set` 补 `providers`；§11 CSP 已落地；§12 单测口径更新为 53 文件 / 510 条 |
+| 2026-11-06 | T-56 / DR-078（会话 84）：§4.5 代理新增 `system`（跟随系统）模式，`setProxy({mode:'system'})` 读取 Windows 系统代理，无需地址端口；仅 HTTP/SOCKS5 保留回退与可达性探测；§12 单测口径更新为 53 文件 / 512 条 |
+| 2026-11-06 | DR-084：pexels 不再开放 API 申请——删除 `sites/pexels.ts` 与能力表条目，`AnySiteId` 收敛为 yande / konachan / wallhaven / bing；移除 `curated` 能力与空查询精选分支、设置页 Pexels key、CSP 图片域名；新增迁移 009 清理本地残留；§12 单测口径更新为 52 文件 / 507 条 |
+| 2026-11-06 | T-58 / DR-085 / DR-086 / DR-087（会话 89）：§5 能力表 `toplist` 位与 `homeFeedFor` 首页推导；搜索页 `feedMode` 区分 `search` / `home`；切站按普通页面切换，丢弃旧站列表并以新站点重置，翻页与批量统一使用当前站点；首页由当日榜改为 `listRankings({kind:'popular'})`（24h 热门单页，`homePagingEnabled` 禁用首页翻页）；`posts:search` 对 `toplist` 站点放行空查询 |
+| 2026-11-06 | T-59 / DR-088（会话 90）：渲染层收敛为六页导航，「榜单」页签删除（`RankingPage` 移除）；首页工具条承载 `rankings` 站点的热门/日/周/月与日期，调用既有 `posts:rankings`，不新增 IPC；`SearchPage` 不再接收 `externalQuery`，查看器标签查询直接在当前页执行 |
+| 2026-11-06 | T-60 / DR-089（会话 91）：渲染层再收敛为五页导航，「诊断」页签删除（`DiagnosticsPage` 移除）；诊断 UI 组件化为 `components/DiagnosticsPanel` 嵌入设置页末端分组，`diag:run` IPC 与主进程六项探针不变；`App.tsx` 不再挂载诊断页 |

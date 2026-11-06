@@ -1,4 +1,4 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import type { Post } from '@shared/models';
 
 /** 02 §7.2 / 03 §6.1：任务状态，`verifying` 在 T-23 只做状态流转，md5 校验由 T-25 接入 */
@@ -21,7 +21,7 @@ export type DownloadAction = (typeof DOWNLOAD_ACTIONS)[number];
 /** 03 §6.1 的 `download_tasks` 一行；时间统一 epoch 毫秒（05 §7） */
 export interface DownloadTask {
   id: string;
-  site: SiteId;
+  site: AnySiteId;
   postId: number;
   url: string;
   /** 校验基准；迁移 005 之前的历史任务为 null，按跳过校验处理（DR-037） */
@@ -38,7 +38,7 @@ export interface DownloadTask {
 
 /** 03 §7 / DR-037：入队携带模板，模板在入队时渲染，缺失时用默认模板 */
 export interface DownloadEnqueueInput {
-  site: SiteId;
+  site: AnySiteId;
   posts: Post[];
   template?: string;
   /** DR-050：重新下载，忽略已下载跳过并复用原任务覆盖最终文件 */
@@ -99,7 +99,7 @@ export interface DownloadControlResult {
 /** 03 §7 / 03 §8：进度事件，按任务节流上报（约 200ms） */
 export interface DownloadProgressEvent {
   taskId: string;
-  site: SiteId;
+  site: AnySiteId;
   postId: number;
   status: DownloadStatus;
   bytesDone: number;
@@ -251,6 +251,7 @@ const ILLEGAL_PATH_CHARS = new Set(['\\', '/', ':', '*', '?', '"', '<', '>', '|'
 /**
  * 02 §7.3：按模板渲染相对路径（用 `/` 分隔），供队列拼接到下载目录。
  * 未知变量保留原文；非法字符与 `.`/`..` 段替换为 `_`；超长时回落到紧凑路径（DR-037）。
+ * 07 DR-070：无 md5 的站点 `{md5}` 回退为 `site_id`，避免默认模板下文件重名。
  */
 export function renderDownloadPath(post: Post, template?: string): string {
   const source =
@@ -279,8 +280,7 @@ export function sanitizePathSegment(value: string): string {
 }
 
 function compactDownloadPath(post: Post): string {
-  const md5 = post.md5.trim() !== '' ? post.md5.trim() : 'unknown';
-  return sanitizePathSegment(`${md5}.${fileExtension(post.fileUrl)}`);
+  return sanitizePathSegment(`${downloadIdentity(post)}.${fileExtension(post.fileUrl)}`);
 }
 
 function substituteTemplate(segment: string, post: Post): string {
@@ -305,12 +305,21 @@ function templateValue(name: string, post: Post): string | null {
     case 'id':
       return String(post.id);
     case 'md5':
-      return post.md5.trim() !== '' ? post.md5.trim() : 'unknown';
+      return downloadIdentity(post);
     case 'ext':
       return fileExtension(post.fileUrl);
     default:
       return null;
   }
+}
+
+/**
+ * 07 DR-070：md5 是 moebooru 特有字段；第三方图库没有 md5 时用 `site_id` 作为稳定身份，
+ * 默认模板 `{md5}.{ext}` 才不会被同一站点的多张图片写成同一个 `unknown.ext`。
+ */
+function downloadIdentity(post: Post): string {
+  const md5 = post.md5.trim();
+  return md5 !== '' ? md5 : `${post.site}_${post.id}`;
 }
 
 /** 02 §7.3：该类型首个标签，缺失为 `unknown` */

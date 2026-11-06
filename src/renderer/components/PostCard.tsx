@@ -15,6 +15,8 @@ export interface PostCardProps {
   viewed: boolean;
   /** 02 §6.2 / T-21：★ 角标数据源，与已看状态独立 */
   favorited?: boolean;
+  /** 02 §8 / DR-069：关注动态的未读红点 */
+  unread?: boolean;
   /** 02 §7.1 / T-27：多选态由页面维护，卡片只展示与上报 */
   selected?: boolean;
   /** 提供时在卡片左上角显示收藏切换按钮；点击不会打开查看器 */
@@ -34,6 +36,7 @@ export function PostCard({
   post,
   viewed,
   favorited = false,
+  unread = false,
   selected = false,
   onToggleFavorite,
   onToggleSelect,
@@ -47,6 +50,7 @@ export function PostCard({
     'post-card',
     viewed ? 'post-card--viewed' : '',
     selected ? 'post-card--selected' : '',
+    unread ? 'post-card--unread' : '',
     selectMode ? 'post-card--select-mode' : ''
   ]
     .filter((name) => name !== '')
@@ -72,6 +76,7 @@ export function PostCard({
     <div
       className={cardClassName}
       data-viewed={viewed ? 'true' : undefined}
+      data-unread={unread ? 'true' : undefined}
       data-selected={selected ? 'true' : undefined}
       onContextMenu={handleContextMenu}
     >
@@ -116,6 +121,10 @@ export function PostCard({
           </span>
         </div>
       </button>
+
+      {unread ? (
+        <span className="post-card__unread" aria-label="未读" title="未读" />
+      ) : null}
 
       {/* 已看只用降低亮度表达，不再渲染 ✓ 角标（DR-045）；收藏由左上角 ☆/★ 承担 */}
       <BadgeStack

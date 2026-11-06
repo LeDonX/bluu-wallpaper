@@ -93,6 +93,29 @@ describe('posts:search 入参校验', () => {
     expect(result).toEqual({ ok: true, data: { posts: [], page: 1, lastId: null } });
     expect(calls).toHaveLength(0);
   });
+
+  it('wallhaven 空查询走首页热门并保留 R18 过滤（DR-085）', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter);
+
+    const result = await handler({ site: 'wallhaven', query: '   ', page: 2 });
+
+    expect(result).toMatchObject({ ok: true, data: { lastId: 2, r18Filtered: true } });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.query.raw).toBe('-rating:e');
+    expect(calls[0]?.query.excludedRatings).toEqual(['explicit']);
+    expect(calls[0]?.cursor).toEqual({ page: 2 });
+  });
+
+  it('普通站点空查询不发起请求，返回空页（TC-06）', async () => {
+    const { adapter, calls } = createFakeAdapter();
+    const handler = createHandler(adapter);
+
+    const result = await handler({ site: 'yande', query: '   ', page: 2 });
+
+    expect(result).toMatchObject({ ok: true, data: { posts: [], page: 1, lastId: null } });
+    expect(calls).toHaveLength(0);
+  });
 });
 
 describe('posts:search 请求与错误映射', () => {

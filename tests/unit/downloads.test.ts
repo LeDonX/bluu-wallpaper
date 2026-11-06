@@ -67,8 +67,8 @@ describe('下载并发配置（DR-034）', () => {
 
   it('显式目录与模板原样保留，空白模板回落默认', () => {
     expect(
-      parseDownloadConfig({ concurrency: 2, destinationDir: 'D:\\Bluu', template: '{id}.{ext}' })
-    ).toMatchObject({ destinationDir: 'D:\\Bluu', template: '{id}.{ext}' });
+      parseDownloadConfig({ concurrency: 2, destinationDir: 'D:\\LePic', template: '{id}.{ext}' })
+    ).toMatchObject({ destinationDir: 'D:\\LePic', template: '{id}.{ext}' });
     expect(parseDownloadConfig({ template: '   ' }).template).toContain('{md5}');
   });
 });

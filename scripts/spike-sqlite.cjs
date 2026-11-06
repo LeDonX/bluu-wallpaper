@@ -6,7 +6,7 @@
  *   pnpm exec electron scripts/spike-sqlite.cjs
  *
  *   # 2) 检查应用启动后生成的 DB（先以 --user-data-dir 启动应用）
- *   $env:SPIKE_DB_FILE = '<userData 目录>\bluu.db'; pnpm exec electron scripts/spike-sqlite.cjs
+ *   $env:SPIKE_DB_FILE = '<userData 目录>\lepic.db'; pnpm exec electron scripts/spike-sqlite.cjs
  *
  * 退出码：0 = 全部检查通过；1 = 任一检查失败。
  * 仅用于本地验证，不写入应用代码。

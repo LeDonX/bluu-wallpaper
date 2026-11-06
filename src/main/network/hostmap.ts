@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { defaultContentConfig, parseContentConfig } from '@shared/content';
 import { defaultDownloadConfig, parseDownloadConfig } from '@shared/downloads';
 import { buildResolverRules, defaultHostmapConfig, parseHostmapConfig } from '@shared/hostmap';
+import { defaultProvidersConfig, parseProvidersConfig } from '@shared/providers';
 import { defaultNetworkConfig, parseNetworkConfig } from '@shared/proxy';
 import type { Settings } from '@shared/settings';
 import { app } from 'electron';
@@ -19,7 +20,8 @@ const defaultAppConfig = (): AppConfig => ({
   hostmap: defaultHostmapConfig(),
   content: defaultContentConfig(),
   downloads: defaultDownloadConfig(),
-  network: defaultNetworkConfig()
+  network: defaultNetworkConfig(),
+  providers: defaultProvidersConfig()
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -39,7 +41,8 @@ export function readConfig(configPath: string): AppConfig {
       hostmap: parseHostmapConfig(record['hostmap']),
       content: parseContentConfig(record['content']),
       downloads: parseDownloadConfig(record['downloads']),
-      network: parseNetworkConfig(record['network'])
+      network: parseNetworkConfig(record['network']),
+      providers: parseProvidersConfig(record['providers'])
     };
   } catch {
     return defaultAppConfig();

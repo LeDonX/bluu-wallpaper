@@ -31,6 +31,11 @@ export interface InfoPanelProps {
   onReveal(post: Post): void;
   onRedownload(post: Post, variant?: DownloadVariant): void;
   onTagSearch(name: string): void;
+  /** 07 DR-069：标签关注入口，状态由查看器统一维护 */
+  onFollowTag?(name: string): void;
+  followedTags?: ReadonlySet<string>;
+  followPendingTag?: string | null;
+  followError?: string | null;
 }
 
 /** 02 §5.2：右侧信息栏，只展示元信息与标签入口，不直接发请求 */
@@ -45,7 +50,11 @@ export function InfoPanel({
   onDownload,
   onReveal,
   onRedownload,
-  onTagSearch
+  onTagSearch,
+  onFollowTag,
+  followedTags,
+  followPendingTag = null,
+  followError = null
 }: InfoPanelProps): ReactElement {
   const hasVariants = hasJpegVariant(post);
   /** DR-051：菜单记录所属图片 id，切换图片后自动收起，避免显示上一张的选项 */
@@ -76,6 +85,10 @@ export function InfoPanel({
   const toggleMenu = (): void => {
     setMenuPostId(menuOpen ? null : post.id);
   };
+
+  // T-53：来源字段可能是「名称（主页）」形式，单独标注并按需提供可点击链接
+  const sourceText = post.source?.trim() ?? '';
+  const sourceUrl = sourceText.match(/https?:\/\/[^\s（）]+/)?.[0] ?? null;
 
   const selectVariant = (variant: DownloadVariant): void => {
     setMenuPostId(null);
@@ -124,11 +137,7 @@ export function InfoPanel({
 
       {downloaded ? (
         <div className={styles.downloadActions}>
-          <button
-            type="button"
-            className={styles.downloadButton}
-            onClick={() => onReveal(post)}
-          >
+          <button type="button" className={styles.downloadButton} onClick={() => onReveal(post)}>
             打开所在文件夹
           </button>
           {hasVariants ? (
@@ -217,14 +226,38 @@ export function InfoPanel({
         <div className={styles.metaRow}>
           <dt>来源</dt>
           <dd className={styles.sourceValue}>
-            {post.source !== undefined && post.source !== '' ? post.source : '—'}
+            {sourceText === '' ? (
+              '—'
+            ) : sourceUrl !== null ? (
+              <a
+                className={styles.sourceLink}
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {sourceText}
+              </a>
+            ) : (
+              sourceText
+            )}
           </dd>
         </div>
       </dl>
 
       <section className={styles.tagSection} aria-label="标签">
         <h3 className={styles.infoHeading}>标签</h3>
-        <TagList tags={post.tags} onTagSearch={onTagSearch} />
+        {followError !== null ? (
+          <p className={styles.downloadError} role="alert">
+            {followError}
+          </p>
+        ) : null}
+        <TagList
+          tags={post.tags}
+          onTagSearch={onTagSearch}
+          {...(onFollowTag !== undefined ? { onFollowTag } : {})}
+          {...(followedTags !== undefined ? { followedTags } : {})}
+          followPendingTag={followPendingTag}
+        />
       </section>
     </aside>
   );

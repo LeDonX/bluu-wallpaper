@@ -1,4 +1,4 @@
-项目：Bluu（蓝噗），仓库目录 booru-desktop（Electron + React + TS，Windows x64）
+项目：LePic，仓库目录 booru-desktop（Electron + React + TS，Windows x64）
 当前工作区根目录即项目根，禁止写死盘符或绝对路径。
 
 【0. 自检】任一项不通过就停止并告知我：

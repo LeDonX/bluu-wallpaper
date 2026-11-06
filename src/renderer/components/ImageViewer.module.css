@@ -441,6 +441,15 @@
   color: var(--text-secondary);
 }
 
+.sourceLink {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.sourceLink:hover {
+  text-decoration: underline;
+}
+
 .tagSection {
   margin-top: var(--space-4);
 }
@@ -458,6 +467,38 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* DR-069：标签与关注按钮平级，避免按钮嵌套 */
+.tagRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tagFollow {
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tagFollow:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tagFollow[data-followed='true'],
+.tagFollow:disabled {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--success);
+  cursor: default;
 }
 
 .tagItem {

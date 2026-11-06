@@ -1,4 +1,5 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId, SiteId } from '@shared/constants';
+import type { DiagReport, DiagRunInput } from '@shared/diagnostics';
 import type {
   DownloadClearResult,
   DownloadControlInput,
@@ -17,12 +18,19 @@ import type { Post, PostPage, TagSuggestion } from '@shared/models';
 import type { ProxyStatus } from '@shared/proxy';
 import type { RankingDate, RankingKind } from '@shared/rankings';
 import type { Settings, SettingsSetResult, SettingsSnapshot } from '@shared/settings';
+import type {
+  FollowAddResult,
+  FollowRefreshResult,
+  SubscriptionSummary,
+  SubscriptionTimeline
+} from '@shared/subscriptions';
 import type { UpdateState } from '@shared/updates';
 
 /** 03 §7：channel 名集中定义，主进程与 preload 共用 */
 export const IPC_CHANNELS = {
   postsSearch: 'posts:search',
   postsRankings: 'posts:rankings',
+  dailyList: 'daily:list',
   tagsSuggest: 'tags:suggest',
   imagesFetch: 'images:fetch',
   imagesProgress: 'images:progress',
@@ -32,6 +40,13 @@ export const IPC_CHANNELS = {
   viewsUpdated: 'views:updated',
   favoritesToggle: 'favorites:toggle',
   favoritesList: 'favorites:list',
+  followsList: 'follows:list',
+  followsAdd: 'follows:add',
+  followsRemove: 'follows:remove',
+  followsTimeline: 'follows:timeline',
+  followsRefresh: 'follows:refresh',
+  followsMarkRead: 'follows:mark-read',
+  followsUpdated: 'follows:updated',
   downloadsEnqueue: 'downloads:enqueue',
   downloadsControl: 'downloads:control',
   downloadsReveal: 'downloads:reveal',
@@ -53,12 +68,13 @@ export const IPC_CHANNELS = {
   updatesCheck: 'updates:check',
   updatesDownload: 'updates:download',
   updatesInstall: 'updates:install',
-  updatesStatus: 'updates:status'
+  updatesStatus: 'updates:status',
+  diagRun: 'diag:run'
 } as const;
 
 /** `page` 与 `lastId` 二选一；都未提供时取第 1 页（03 §7） */
 export interface PostsSearchInput {
-  site: SiteId;
+  site: AnySiteId;
   query: string;
   page?: number;
   lastId?: number;
@@ -66,15 +82,20 @@ export interface PostsSearchInput {
 
 /** 03 §7 / 02 §4：榜单入参；期榜必须带 date，热门不带；page 仅期榜生效（DR-041） */
 export interface PostsRankingsInput {
-  site: SiteId;
+  site: AnySiteId;
   kind: RankingKind;
   date?: RankingDate;
   page?: number;
 }
 
+/** 03 §7 / DR-076：每日壁纸入参，站点须具备 `daily` 能力 */
+export interface DailyListInput {
+  site: AnySiteId;
+}
+
 /** 03 §7 / 02 §3：prefix 为用户正在输入的标签前缀（≥2 字符） */
 export interface TagsSuggestInput {
-  site: SiteId;
+  site: AnySiteId;
   prefix: string;
 }
 
@@ -98,42 +119,69 @@ export interface ImageProgress {
 
 /** 03 §7 / 02 §6：`views:mark` 与 `views:list` 共用的入参，单次最多 100 个 id（03 §6.2） */
 export interface ViewsInput {
-  site: SiteId;
+  site: AnySiteId;
   postIds: number[];
 }
 
 /** 03 §7 / 02 §6.4：清除浏览记录；不传 site 表示全部站点（DR-033） */
 export interface ViewsClearInput {
-  site?: SiteId;
+  site?: AnySiteId;
 }
 
 export interface ViewsClearResult {
   /** 实际清除范围；全部站点时为 null */
-  site: SiteId | null;
+  site: AnySiteId | null;
   clearedViews: number;
   clearedFavorites: number;
 }
 
 /** 05 §6：清除记录成功后广播，通知其他页面同步本地缓存 */
 export interface ViewsUpdatedEvent {
-  site: SiteId | null;
+  site: AnySiteId | null;
 }
 
 /** 03 §7 / DR-032：收藏时携带 Post 快照，主进程写入 `posts` 表供收藏页本地展示 */
 export interface FavoriteToggleInput {
-  site: SiteId;
+  site: AnySiteId;
   post: Post;
 }
 
 /** 03 §7 / 02 §8：收藏页按站点读取，query 为标签本地筛选，sort 为排序方式 */
 export interface FavoriteListInput {
-  site: SiteId;
+  site: AnySiteId;
   query?: string;
   sort?: FavoriteSort;
 }
 
 export interface FavoriteToggleResult {
   favorited: boolean;
+}
+
+/** 03 §7 / 07 DR-069：关注列表、时间线、刷新与手动已读的入参 */
+export interface FollowsSiteInput {
+  site: SiteId;
+}
+
+export interface FollowsAddInput {
+  site: SiteId;
+  tag: string;
+}
+
+export interface FollowsRemoveInput {
+  site: SiteId;
+  tag: string;
+}
+
+/** `postIds` 优先（打开单条清未读）；否则按 `tag` 清分组；都不传则清整站 */
+export interface FollowsMarkReadInput {
+  site: SiteId;
+  tag?: string;
+  postIds?: number[];
+}
+
+/** 刷新完成后广播，关注页据此重载本地列表 */
+export interface FollowsUpdatedEvent {
+  site: SiteId;
 }
 
 /** 03 §7 / DR-055：记录或删除搜索历史时的查询串（主进程会再做归一化与校验） */
@@ -161,6 +209,8 @@ export interface BooruApi {
   arch: string;
   searchPosts(input: PostsSearchInput): Promise<Result<PostPage>>;
   listRankings(input: PostsRankingsInput): Promise<Result<PostPage>>;
+  /** 03 §7 / DR-076：每日壁纸，固定返回最近 8 天 */
+  listDaily(input: DailyListInput): Promise<Result<PostPage>>;
   suggestTags(input: TagsSuggestInput): Promise<Result<TagSuggestion[]>>;
   loadImage(input: ImageFetchInput): Promise<Result<ImageBinary>>;
   onImageProgress(listener: (progress: ImageProgress) => void): () => void;
@@ -170,6 +220,14 @@ export interface BooruApi {
   onViewsUpdated(listener: (event: ViewsUpdatedEvent) => void): () => void;
   toggleFavorite(input: FavoriteToggleInput): Promise<Result<FavoriteToggleResult>>;
   listFavorites(input: FavoriteListInput): Promise<Result<PostPage>>;
+  /** 03 §7 / 07 DR-069：关注任意标签（画师即标签） */
+  listFollows(input: FollowsSiteInput): Promise<Result<SubscriptionSummary[]>>;
+  addFollow(input: FollowsAddInput): Promise<Result<FollowAddResult>>;
+  removeFollow(input: FollowsRemoveInput): Promise<Result<null>>;
+  getFollowTimeline(input: FollowsSiteInput): Promise<Result<SubscriptionTimeline>>;
+  refreshFollows(input: FollowsSiteInput): Promise<Result<FollowRefreshResult>>;
+  markFollowsRead(input: FollowsMarkReadInput): Promise<Result<null>>;
+  onFollowsUpdated(listener: (event: FollowsUpdatedEvent) => void): () => void;
   enqueueDownloads(input: DownloadEnqueueInput): Promise<Result<DownloadEnqueueResult>>;
   controlDownload(input: DownloadControlInput): Promise<Result<DownloadControlResult>>;
   /** DR-043：在系统文件管理器中打开任务所在文件夹并选中文件 */
@@ -201,4 +259,6 @@ export interface BooruApi {
   downloadUpdate(): Promise<Result<UpdateState>>;
   installUpdate(): Promise<Result<null>>;
   onUpdateStatus(listener: (state: UpdateState) => void): () => void;
+  /** 03 §7 / T-34：运行六项网络与本地目录诊断，结果供诊断页展示与复制 */
+  runDiagnostics(input: DiagRunInput): Promise<Result<DiagReport>>;
 }

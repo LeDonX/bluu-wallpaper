@@ -1,0 +1,25 @@
+{
+  "images": [
+    {
+      "startdate": "20261104",
+      "enddate": "20261104",
+      "url": "/th?id=OHR.Third_1920x1080.jpg",
+      "urlbase": "/th?id=OHR.Third",
+      "copyright": "Third (© Example)"
+    },
+    {
+      "startdate": "20261106",
+      "enddate": "20261106",
+      "url": "/th?id=OHR.Newest_1920x1080.jpg",
+      "urlbase": "/th?id=OHR.Newest",
+      "copyright": "Newest (© Example)"
+    },
+    {
+      "startdate": "20261105",
+      "enddate": "20261105",
+      "url": "/th?id=OHR.Second_1920x1080.jpg",
+      "urlbase": "/th?id=OHR.Second",
+      "copyright": "Second (© Example)"
+    }
+  ]
+}

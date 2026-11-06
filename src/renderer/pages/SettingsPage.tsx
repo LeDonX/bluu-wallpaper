@@ -9,6 +9,7 @@ import {
 } from '@shared/downloads';
 import { type AppError, createAppError } from '@shared/errors';
 import type { HostMapEntry } from '@shared/hostmap';
+import { hasProviderKey } from '@shared/providers';
 import { PROXY_MODE_LABELS, type ProxyMode, type ProxyStatus } from '@shared/proxy';
 import type { Settings } from '@shared/settings';
 import { resolveDownloadDirLabel } from '@shared/settings';
@@ -16,6 +17,7 @@ import type { UpdateState } from '@shared/updates';
 import type { ReactElement } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
+import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import { IpMapEditor } from '../components/IpMapEditor';
 import { SettingsSection } from '../components/SettingsSection';
 import { Switch } from '../components/Switch';
@@ -36,11 +38,12 @@ const TARGET_LABELS: Record<ClearTarget, string> = {
   all: `全部站点（${SITE_IDS.map((site) => SITE_LABELS[site]).join(' + ')}）`
 };
 
-type SectionId = 'network' | 'downloads' | 'content' | 'privacy' | 'update';
+type SectionId = 'network' | 'downloads' | 'providers' | 'content' | 'privacy' | 'update';
 
 const SAVED_NOTICE: Record<SectionId, string> = {
   network: '网络设置已保存',
   downloads: '下载设置已保存，后续入队任务按新设置执行',
+  providers: '图库服务设置已保存',
   content: '内容设置已保存',
   privacy: '',
   update: ''
@@ -125,6 +128,7 @@ export function SettingsPage(): ReactElement {
   const [feedback, setFeedback] = useState<Record<SectionId, Feedback | undefined>>({
     network: undefined,
     downloads: undefined,
+    providers: undefined,
     content: undefined,
     privacy: undefined,
     update: undefined
@@ -385,20 +389,21 @@ export function SettingsPage(): ReactElement {
   }
 
   const busy = saving !== null || clearing;
-  const proxyDisabled = draft.network.proxy.mode === 'direct';
+  const proxyDisabled =
+    draft.network.proxy.mode === 'direct' || draft.network.proxy.mode === 'system';
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>设置</h1>
-        <p className={styles.subtitle}>网络、下载、内容与本地数据</p>
+        <p className={styles.subtitle}>网络、下载、图库服务、内容、本地数据与诊断</p>
       </header>
 
       <SettingsSection id="settings-network" title="网络">
         <div className={styles.item}>
           <h3 className={styles.itemTitle}>代理</h3>
           <p className={styles.description}>
-            保存后立即对两个站点应用并复检；代理不可达时自动回退直连，顶部横幅会给出原因。
+            保存后立即对全部站点应用并复检；HTTP / SOCKS5 代理不可达时自动回退直连，顶部横幅会给出原因。「跟随系统」读取 Windows 系统代理（如 Clash Verge），不做回退，系统代理关闭时按直连访问。
           </p>
 
           <div className={styles.fieldRow}>
@@ -603,6 +608,56 @@ export function SettingsPage(): ReactElement {
           </button>
         </div>
         <SectionFeedback value={feedback.downloads} />
+      </SettingsSection>
+
+      <SettingsSection id="settings-providers" title="图库服务">
+        <div className={styles.item}>
+          <h3 className={styles.itemTitle}>第三方图库密钥</h3>
+          <p className={styles.description}>
+            wallhaven 需要 API key，Bing 每日壁纸无需密钥。密钥只保存在本机 config.json，不会写入日志、错误详情或诊断报告；留空表示未配置，对应站点不可用。
+          </p>
+
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>wallhaven API key</span>
+              <input
+                className={styles.input}
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={draft.providers.wallhavenApiKey}
+                placeholder="粘贴 API key"
+                disabled={busy}
+                onChange={(event) => {
+                  const wallhavenApiKey = event.target.value;
+                  updateDraft((current) => ({
+                    ...current,
+                    providers: { ...current.providers, wallhavenApiKey }
+                  }));
+                }}
+              />
+              <span className={styles.status}>
+                {hasProviderKey(draft.providers, 'wallhaven')
+                  ? '已配置，wallhaven.cc 可用'
+                  : '未配置，wallhaven.cc 不可用'}
+              </span>
+            </label>
+          </div>
+
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled={busy}
+              onClick={() => {
+                void save('providers');
+              }}
+            >
+              {saving === 'providers' ? '正在保存…' : '保存图库服务设置'}
+            </button>
+          </div>
+          <SectionFeedback value={feedback.providers} />
+        </div>
       </SettingsSection>
 
       <SettingsSection id="settings-content" title="内容">
@@ -841,6 +896,11 @@ export function SettingsPage(): ReactElement {
             </p>
           ) : null}
         </div>
+      </SettingsSection>
+
+      {/* T-60 / DR-089：诊断并入设置，不再占用独立导航页 */}
+      <SettingsSection id="settings-diagnostics" title="诊断">
+        <DiagnosticsPanel />
       </SettingsSection>
     </main>
   );

@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "id": "abc123",
+      "purity": "001",
+      "category": "general",
+      "dimension_x": 3840,
+      "dimension_y": 2160,
+      "file_size": 123456,
+      "created_at": "2024-01-02 03:04:05",
+      "path": "https://w.wallhaven.cc/full/ab/wallhaven-abc123.jpg",
+      "source": "https://example.com/original",
+      "favorites": 42,
+      "thumbs": {
+        "large": "https://th.wallhaven.cc/lg/ab/abc123.jpg",
+        "original": "https://th.wallhaven.cc/orig/ab/abc123.jpg"
+      }
+    }
+  ],
+  "meta": { "current_page": 1, "last_page": 3 }
+}

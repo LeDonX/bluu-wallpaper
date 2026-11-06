@@ -1,5 +1,5 @@
 import { createRateLimiter, type RateLimiter } from '@main/network/rate-limiter';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import {
   type AppError,
   AppErrorException,
@@ -41,12 +41,12 @@ export interface HttpResponse {
 }
 
 export interface HttpClient {
-  readonly site: SiteId;
+  readonly site: AnySiteId;
   request(path: string, options?: HttpRequestOptions): Promise<Result<HttpResponse>>;
 }
 
 export interface HttpClientDeps {
-  site: SiteId;
+  site: AnySiteId;
   transport: HttpTransport;
   /** 站点根地址，默认取 `siteBaseUrl`；集成测试可指向本地 mock server */
   baseUrl?: string;

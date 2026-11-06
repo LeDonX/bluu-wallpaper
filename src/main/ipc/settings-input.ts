@@ -4,7 +4,7 @@ import { PROXY_MODES } from '@shared/proxy';
 import type { Settings } from '@shared/settings';
 import { z } from 'zod';
 
-/** 05 §5 / 07 DR-040：`settings:set` 入参覆盖全部四组设置，逐字段 zod 校验 */
+/** 05 §5 / 07 DR-040：`settings:set` 入参覆盖全部设置组，逐字段 zod 校验 */
 const settingsSchema = z.object({
   hostmap: z.object({
     enabled: z.boolean(),
@@ -33,7 +33,13 @@ const settingsSchema = z.object({
       host: z.string(),
       port: z.number()
     })
-  })
+  }),
+  // DR-071：旧客户端可能不带该组，缺失时按未配置处理
+  providers: z
+    .object({
+      wallhavenApiKey: z.string().optional()
+    })
+    .optional()
 });
 
 export function parseSettingsInput(raw: unknown): Settings {
@@ -45,5 +51,10 @@ export function parseSettingsInput(raw: unknown): Settings {
       })
     );
   }
-  return parsed.data;
+  return {
+    ...parsed.data,
+    providers: {
+      wallhavenApiKey: parsed.data.providers?.wallhavenApiKey ?? ''
+    }
+  };
 }

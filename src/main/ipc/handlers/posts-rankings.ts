@@ -1,17 +1,18 @@
-import type { MoebooruAdapter } from '@main/sites/moebooru';
-import type { SiteId } from '@shared/constants';
+import type { SiteAdapter } from '@main/sites/types';
+import type { AnySiteId } from '@shared/constants';
 import { isPostBlacklisted } from '@shared/content';
-import { type Result, toAppError } from '@shared/errors';
+import { createAppError, type Result, toAppError } from '@shared/errors';
 import type { PostsRankingsInput } from '@shared/ipc-contract';
 import type { PostPage, SearchCursor } from '@shared/models';
+import { SITE_LABELS } from '@shared/sites';
 
 import { parseRankingsInput } from '../rankings-input';
 
 export type PostsRankingsHandler = (raw: unknown) => Promise<Result<PostPage>>;
 
 export interface PostsRankingsOptions {
-  /** 07 DR-057：两站共用 moebooru 榜单端点，按入参站点选择适配器 */
-  getAdapter: (site: SiteId) => Pick<MoebooruAdapter, 'rankings'>;
+  /** 07 DR-057 / DR-070：榜单属于可选能力，缺失时 handler 按 CONFIG 拒绝 */
+  getAdapter: (site: AnySiteId) => Pick<SiteAdapter, 'rankings'>;
   /** 07 DR-023 / DR-041：榜单无 tags 参数，R18 关闭时在结果上本地过滤 */
   isExplicitAllowed: () => boolean;
   /** 07 DR-056：黑名单同样只能本地过滤，与搜索共用同一份配置 */
@@ -37,14 +38,24 @@ export function createPostsRankingsHandler(
     }
 
     try {
-      const page = await options.getAdapter(input.site).rankings(
+      const adapter = options.getAdapter(input.site);
+      // DR-070：没有榜单能力的站点（如第三方图库）请求榜单时给出明确原因
+      if (adapter.rankings === undefined) {
+        return {
+          ok: false,
+          error: createAppError('CONFIG', `${SITE_LABELS[input.site]} 不支持榜单功能`, {
+            retryable: false
+          })
+        };
+      }
+      const page = await adapter.rankings(
         input.kind,
         input.date,
         cursorOf(input)
       );
       const allowExplicit = options.isExplicitAllowed();
       const blacklist = options.getBlacklist();
-      // DR-041 / DR-056：榜单端点无法用 tags 排除，R18 与黑名单都只能在结果上本地过滤
+      // DR-041 / DR-056 / DR-092：热门端点无 tags 能力，期榜虽支持 tags 但保持同一口径，R18 与黑名单统一在结果上本地过滤
       const r18Posts = allowExplicit
         ? page.posts
         : page.posts.filter((post) => post.rating !== 'explicit');

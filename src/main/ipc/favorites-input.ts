@@ -1,4 +1,4 @@
-import { SITE_IDS } from '@shared/constants';
+import { ALL_SITE_IDS } from '@shared/constants';
 import { AppErrorException, createAppError } from '@shared/errors';
 import { FAVORITE_SORTS } from '@shared/favorites';
 import type { FavoriteListInput, FavoriteToggleInput } from '@shared/ipc-contract';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 const postTagSchema = z.object({ name: z.string(), type: z.string() });
 
 const postSchema = z.object({
-  site: z.enum(SITE_IDS),
+  site: z.enum(ALL_SITE_IDS),
   id: z.number().int().positive(),
   md5: z.string(),
   previewUrl: z.string(),
@@ -26,7 +26,7 @@ const postSchema = z.object({
 });
 
 const toggleSchema = z
-  .object({ site: z.enum(SITE_IDS), post: postSchema })
+  .object({ site: z.enum(ALL_SITE_IDS), post: postSchema })
   .superRefine((value, context) => {
     // 快照站点必须与入参一致，避免收藏记到错误站点
     if (value.post.site !== value.site) {
@@ -39,7 +39,7 @@ const toggleSchema = z
   });
 
 const listSchema = z.object({
-  site: z.enum(SITE_IDS),
+  site: z.enum(ALL_SITE_IDS),
   query: z.string().max(200).optional(),
   sort: z.enum(FAVORITE_SORTS).optional()
 });

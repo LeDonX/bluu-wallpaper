@@ -10,8 +10,9 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('代理规则组装', () => {
-  it('直连不生成规则串', () => {
+  it('直连与跟随系统不生成规则串', () => {
     expect(buildProxyRules({ ...DEFAULT_PROXY_CONFIG, mode: 'direct' })).toBe('');
+    expect(buildProxyRules({ ...DEFAULT_PROXY_CONFIG, mode: 'system' })).toBe('');
   });
 
   it('HTTP 与 SOCKS5 生成带协议的规则串', () => {
@@ -44,6 +45,14 @@ describe('代理配置解析', () => {
       mode: 'socks5',
       host: '10.0.0.2',
       port: 1080
+    });
+  });
+
+  it('跟随系统为合法模式，地址与端口沿用默认值', () => {
+    expect(parseProxyConfig({ mode: 'system' })).toEqual({
+      mode: 'system',
+      host: DEFAULT_PROXY_CONFIG.host,
+      port: DEFAULT_PROXY_CONFIG.port
     });
   });
 
@@ -91,6 +100,28 @@ describe('代理回退判定', () => {
   it('直连永远不需要回退', () => {
     expect(
       judgeProxyFallback({ ...base, mode: 'direct', rulesValid: false, resolution: null })
+    ).toEqual({ fallback: false, reason: null });
+  });
+
+  it('跟随系统不回退：系统代理关闭时 DIRECT 属正常状态', () => {
+    expect(
+      judgeProxyFallback({
+        mode: 'system',
+        rulesValid: true,
+        resolution: 'direct',
+        probe: 'skipped'
+      })
+    ).toEqual({ fallback: false, reason: null });
+    expect(
+      judgeProxyFallback({ mode: 'system', rulesValid: true, resolution: null, probe: 'skipped' })
+    ).toEqual({ fallback: false, reason: null });
+    expect(
+      judgeProxyFallback({
+        mode: 'system',
+        rulesValid: true,
+        resolution: 'http',
+        probe: 'unreachable'
+      })
     ).toEqual({ fallback: false, reason: null });
   });
 

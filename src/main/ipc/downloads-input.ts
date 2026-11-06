@@ -1,5 +1,5 @@
 import { isAllowedImageUrl } from '@main/network/image-loader';
-import { SITE_IDS } from '@shared/constants';
+import { ALL_SITE_IDS } from '@shared/constants';
 import {
   DOWNLOAD_ACTIONS,
   DOWNLOAD_VARIANTS,
@@ -18,7 +18,7 @@ const DOWNLOAD_MAX_BATCH = 100;
 const postTagSchema = z.object({ name: z.string(), type: z.string() });
 
 const postSchema = z.object({
-  site: z.enum(SITE_IDS),
+  site: z.enum(ALL_SITE_IDS),
   id: z.number().int().positive(),
   md5: z.string(),
   previewUrl: z.string(),
@@ -39,7 +39,7 @@ const postSchema = z.object({
 
 const enqueueSchema = z
   .object({
-    site: z.enum(SITE_IDS),
+    site: z.enum(ALL_SITE_IDS),
     posts: z.array(postSchema).min(1).max(DOWNLOAD_MAX_BATCH),
     template: z.string().max(200).optional(),
     force: z.boolean().optional(),

@@ -1,5 +1,5 @@
 import { type SqlDatabase, withTransaction } from '@main/storage/db';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import { isTagType, type TagSuggestion } from '@shared/models';
 
 /**
@@ -7,8 +7,8 @@ import { isTagType, type TagSuggestion } from '@shared/models';
  * 只负责存取，不发起网络请求，便于离线单测（T-15）。
  */
 export interface TagCache {
-  find(site: SiteId, prefix: string, limit: number): TagSuggestion[];
-  save(site: SiteId, tags: readonly TagSuggestion[]): void;
+  find(site: AnySiteId, prefix: string, limit: number): TagSuggestion[];
+  save(site: AnySiteId, tags: readonly TagSuggestion[]): void;
 }
 
 interface TagRow {

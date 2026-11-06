@@ -2,6 +2,7 @@ import { createSettingsGetHandler } from '@main/ipc/handlers/settings-get';
 import { createSettingsSetHandler } from '@main/ipc/handlers/settings-set';
 import { parseSettingsInput } from '@main/ipc/settings-input';
 import { defaultHostmapConfig } from '@shared/hostmap';
+import { MAX_PROVIDER_KEY_LENGTH } from '@shared/providers';
 import type { ProxyStatus } from '@shared/proxy';
 import {
   defaultSettings,
@@ -25,19 +26,26 @@ function settingsWith(patch: (settings: ReturnType<typeof defaultSettings>) => v
 }
 
 describe('设置模型解析（DR-040）', () => {
-  it('缺失或空对象回落四组默认值', () => {
+  it('缺失或空对象回落五组默认值', () => {
     expect(parseSettings(undefined)).toEqual(defaultSettings());
     expect(parseSettings({})).toEqual(defaultSettings());
+  });
+
+  it('图库密钥缺失时回落为空，非字符串字段被忽略（DR-071）', () => {
+    expect(parseSettings({}).providers).toEqual({ wallhavenApiKey: '' });
+    expect(parseSettings({ providers: { wallhavenApiKey: 'WH', unknownApiKey: 42 } }).providers).toEqual(
+      { wallhavenApiKey: 'WH' }
+    );
   });
 
   it('群组缺失时独立回落，不影响其他组', () => {
     const parsed = parseSettings({
       content: { allowExplicit: true },
-      downloads: { concurrency: 5, destinationDir: 'D:\\Bluu', template: '{id}.{ext}' }
+      downloads: { concurrency: 5, destinationDir: 'D:\\LePic', template: '{id}.{ext}' }
     });
     expect(parsed.content.allowExplicit).toBe(true);
     expect(parsed.downloads.concurrency).toBe(5);
-    expect(parsed.downloads.destinationDir).toBe('D:\\Bluu');
+    expect(parsed.downloads.destinationDir).toBe('D:\\LePic');
     expect(parsed.hostmap.entries.length).toBe(defaultHostmapConfig().entries.length);
   });
 });
@@ -87,6 +95,30 @@ describe('设置保存前校验（02 §9）', () => {
       })
     );
     expect(direct).toEqual([]);
+  });
+
+  it('图库密钥留空合法，含空白或超长被拒绝（DR-071）', () => {
+    expect(
+      validateSettings(
+        settingsWith((settings) => {
+          settings.providers.wallhavenApiKey = '   ';
+        })
+      )
+    ).toEqual([]);
+
+    const spaced = validateSettings(
+      settingsWith((settings) => {
+        settings.providers.wallhavenApiKey = 'abc def';
+      })
+    );
+    expect(spaced.join('; ')).toContain('wallhaven API key');
+
+    const tooLong = validateSettings(
+      settingsWith((settings) => {
+        settings.providers.wallhavenApiKey = 'a'.repeat(MAX_PROVIDER_KEY_LENGTH + 1);
+      })
+    );
+    expect(tooLong.join('; ')).toContain('wallhaven API key');
   });
 
   it('IP 映射启用时必须至少一条，条目域名/IP 与重复都会被指出', () => {
@@ -202,7 +234,7 @@ describe('settings:get / settings:set handler', () => {
     const input = settingsWith((settings) => {
       settings.downloads = {
         concurrency: 5,
-        destinationDir: 'D:\\Bluu',
+        destinationDir: 'D:\\LePic',
         template: '{id}.{ext}',
         format: 'jpeg'
       };
@@ -213,7 +245,7 @@ describe('settings:get / settings:set handler', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(harness.stored().downloads.concurrency).toBe(5);
-    expect(harness.stored().downloads.destinationDir).toBe('D:\\Bluu');
+    expect(harness.stored().downloads.destinationDir).toBe('D:\\LePic');
     expect(harness.stored().content.allowExplicit).toBe(true);
     expect(harness.applied()).toEqual({ proxy: 1, downloads: 1 });
     expect(result.data.restartRequired).toBe(false);
@@ -230,6 +262,32 @@ describe('settings:get / settings:set handler', () => {
     const result = await setSettings(input);
     expect(result.ok).toBe(true);
     expect(harness.stored().content.blacklist).toEqual(['lowres', 'bad_id']);
+  });
+
+  it('图库密钥保存前 trim，空白归一化为未配置（DR-071）', async () => {
+    const harness = createHarness();
+    const setSettings = createSettingsSetHandler(harness.deps);
+    const input = settingsWith((settings) => {
+      settings.providers.wallhavenApiKey = '  wh-key  ';
+    });
+
+    const result = await setSettings(input);
+    expect(result.ok).toBe(true);
+    expect(harness.stored().providers).toEqual({ wallhavenApiKey: 'wh-key' });
+  });
+
+  it('非法密钥的报错不回显密钥内容（DR-071）', async () => {
+    const harness = createHarness();
+    const setSettings = createSettingsSetHandler(harness.deps);
+    const input = settingsWith((settings) => {
+      settings.providers.wallhavenApiKey = 'secret with space';
+    });
+
+    const result = await setSettings(input);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('CONFIG');
+    expect(JSON.stringify(result.error)).not.toContain('secret with space');
   });
 
   it('IP 映射变化返回重启提示', async () => {
@@ -264,5 +322,12 @@ describe('settings:get / settings:set handler', () => {
   it('结构不完整或类型错误由 zod 拒绝', () => {
     expect(() => parseSettingsInput({ downloads: { concurrency: 3 } })).toThrow();
     expect(() => parseSettingsInput(null)).toThrow();
+  });
+
+  it('providers 组缺失时按未配置补齐（DR-071）', () => {
+    const input = settingsWith(() => {});
+    expect(parseSettingsInput({ ...input, providers: undefined }).providers).toEqual({
+      wallhavenApiKey: ''
+    });
   });
 });

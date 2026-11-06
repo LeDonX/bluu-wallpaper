@@ -1,17 +1,19 @@
-import { MOEBOORU_TAG_LIMIT, type MoebooruAdapter } from '@main/sites/moebooru';
+import { MOEBOORU_TAG_LIMIT } from '@main/sites/moebooru';
+import type { SiteAdapter } from '@main/sites/types';
 import type { TagCache } from '@main/storage/tags';
-import type { SiteId } from '@shared/constants';
-import { type Result, toAppError } from '@shared/errors';
+import type { AnySiteId } from '@shared/constants';
+import { createAppError, type Result, toAppError } from '@shared/errors';
 import type { TagsSuggestInput } from '@shared/ipc-contract';
 import type { TagSuggestion } from '@shared/models';
+import { SITE_LABELS } from '@shared/sites';
 
 import { parseSuggestInput } from '../suggest-input';
 
 export type TagsSuggestHandler = (raw: unknown) => Promise<Result<TagSuggestion[]>>;
 
 export interface TagsSuggestDeps {
-  /** 07 DR-057：两站共用 `/tag.json` 前缀联想，按入参站点选择适配器 */
-  getAdapter: (site: SiteId) => Pick<MoebooruAdapter, 'suggestTags'>;
+  /** 07 DR-057 / DR-070：联想属于可选能力，缺失时 handler 按 CONFIG 拒绝 */
+  getAdapter: (site: AnySiteId) => Pick<SiteAdapter, 'suggestTags'>;
   cache: TagCache;
 }
 
@@ -36,7 +38,17 @@ export function createTagsSuggestHandler(deps: TagsSuggestDeps): TagsSuggestHand
       const cached = cache.find(input.site, prefix, MOEBOORU_TAG_LIMIT);
       if (cached.length > 0) return { ok: true, data: cached };
 
-      const remote = await getAdapter(input.site).suggestTags(prefix, MOEBOORU_TAG_LIMIT);
+      // DR-070：没有联想能力的站点即使缓存未命中，也不发起远端请求
+      const adapter = getAdapter(input.site);
+      if (adapter.suggestTags === undefined) {
+        return {
+          ok: false,
+          error: createAppError('CONFIG', `${SITE_LABELS[input.site]} 不支持标签联想`, {
+            retryable: false
+          })
+        };
+      }
+      const remote = await adapter.suggestTags(prefix, MOEBOORU_TAG_LIMIT);
       if (remote.length > 0) cache.save(input.site, remote);
       return { ok: true, data: remote };
     } catch (error) {

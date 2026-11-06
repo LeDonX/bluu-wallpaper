@@ -66,8 +66,14 @@ describe('下载命名模板（02 §7.3 / DR-037）', () => {
     );
   });
 
-  it('未知变量原样保留，md5 为空回落 unknown', () => {
-    expect(renderDownloadPath(makePost({ md5: '' }), '{id}-{foo}-{md5}')).toBe('42-{foo}-unknown');
+  it('未知变量原样保留，md5 为空回退为 site_id（DR-070）', () => {
+    expect(renderDownloadPath(makePost({ md5: '' }), '{id}-{foo}-{md5}')).toBe(
+      '42-{foo}-yande_42'
+    );
+    expect(renderDownloadPath(makePost({ md5: '' }))).toBe('yande_42.png');
+    expect(
+      renderDownloadPath(makePost({ md5: '' }), '{site}/{rating}/{id}.{ext}')
+    ).toBe('yande/safe/42.png');
   });
 
   it('非法字符与控制字符替换为 _，纯点号段替换为 _', () => {

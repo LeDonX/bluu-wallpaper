@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { normalizeBlacklist } from '@shared/content';
 import type { DownloadConfig } from '@shared/downloads';
 import { AppErrorException, createAppError, type Result } from '@shared/errors';
+import { sanitizeProvidersConfig } from '@shared/providers';
 import type { ProxyConfig, ProxyStatus } from '@shared/proxy';
 import {
   hostmapRestartRequired,
@@ -33,7 +34,12 @@ export function createSettingsSetHandler(deps: SettingsSetDeps): SettingsSetHand
   return async (raw) => {
     try {
       const parsed = parseSettingsInput(raw);
-      const errors = validateSettings(parsed);
+      // DR-071：先 trim 再校验，避免首尾空白被误判为“含空白字符”
+      const sanitized: Settings = {
+        ...parsed,
+        providers: sanitizeProvidersConfig(parsed.providers)
+      };
+      const errors = validateSettings(sanitized);
       if (errors.length > 0) {
         throw new AppErrorException(
           createAppError('CONFIG', `设置未保存：${errors.join('；')}`, {
@@ -42,10 +48,13 @@ export function createSettingsSetHandler(deps: SettingsSetDeps): SettingsSetHand
         );
       }
 
-      // DR-056：黑名单落盘前统一小写并去重，读取侧无需再处理重复项
+      // DR-056：黑名单落盘前统一小写并去重
       const settings: Settings = {
-        ...parsed,
-        content: { ...parsed.content, blacklist: normalizeBlacklist(parsed.content.blacklist) }
+        ...sanitized,
+        content: {
+          ...sanitized.content,
+          blacklist: normalizeBlacklist(sanitized.content.blacklist)
+        }
       };
 
       // DR-058：目录在保存时先验证可创建，避免下载时才发现盘符不存在

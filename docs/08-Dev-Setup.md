@@ -1,4 +1,4 @@
-# Bluu（蓝噗）开发环境与命令
+# LePic 开发环境与命令
 
 | 项 | 内容 |
 |---|---|
@@ -124,8 +124,8 @@ pnpm dist
 
 产物：
 
-- `release/Bluu Setup x.y.z.exe`（NSIS，per-user，免管理员）
-- `release/Bluu x.y.z.exe`（portable）
+- `release/LePic Setup x.y.z.exe`（NSIS，per-user，免管理员）
+- `release/LePic x.y.z.exe`（portable）
 
 注意：
 
@@ -139,7 +139,7 @@ pnpm dist
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 启动白屏 | 渲染层异常或 preload 未加载 | 看 `%APPDATA%\bluu\logs` |
+| 启动白屏 | 渲染层异常或 preload 未加载 | 看 `%APPDATA%\lepic\logs` |
 | 请求全部 403 | 未走 CF 通道 / cookie 失效 | 清 cookie 后重新验证 |
 | 图片不显示 | 未映射 `assets.yande.re` | 检查 IP 映射表 |
 | 下载 0 字节 | Range 不被支持 | 走整文件重下分支 |

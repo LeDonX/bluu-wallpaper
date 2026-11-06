@@ -7,7 +7,7 @@ import { ImageViewer } from '@renderer/components/ImageViewer';
 import { PostGrid } from '@renderer/components/PostGrid';
 import { SearchBar } from '@renderer/components/SearchBar';
 import { Switch } from '@renderer/components/Switch';
-import { SITE_IDS, type SiteId } from '@shared/constants';
+import { type AnySiteId, isProviderSiteId } from '@shared/constants';
 import {
   describeBatchSummary,
   enqueueDownloadBatch,
@@ -25,15 +25,35 @@ import {
   isAutoFillExhausted,
   mergePosts
 } from '@shared/posts';
+import { hasProviderKey, type ProvidersConfig } from '@shared/providers';
+import {
+  dateFromIsoWeek,
+  defaultRankingDate,
+  formatRankingDateInput,
+  formatRankingPeriodLabel,
+  isoWeekOf,
+  isoWeeksInYear,
+  parseRankingDateInput,
+  RANKING_KINDS,
+  RANKING_LABELS,
+  type RankingDate,
+  type RankingKind,
+  rankingNeedsDate,
+  rankingSupportsPaging,
+  todayRankingDate
+} from '@shared/rankings';
 import { postSelectionKey, selectKeyRange, toggleSelectionKey } from '@shared/selection';
-import { SITE_LABELS } from '@shared/sites';
-import type { ReactElement } from 'react';
+import { homeFeedFor, SITE_LABELS, siteSupports, sitesWithCapability } from '@shared/sites';
+import type { ChangeEvent, ReactElement } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface PagePayload {
   result: Result<PostPage>;
   viewedIds: number[];
 }
+
+/** DR-085：首页（空查询）与关键词搜索共用同一套分页与渲染状态 */
+type FeedMode = 'search' | 'home';
 
 /** 只追加已看 id，避免无新 id 时改引用触发多余渲染 */
 function withViewedIds(previous: ReadonlySet<number>, ids: readonly number[]): ReadonlySet<number> {
@@ -43,15 +63,43 @@ function withViewedIds(previous: ReadonlySet<number>, ids: readonly number[]): R
   return next;
 }
 
-export interface SearchPageProps {
-  /** DR-041 / DR-057：榜单查看器点击标签后由 App 转发，seq 变化即执行一次查询，并切到来源站点 */
-  externalQuery?: { query: string; site?: SiteId; seq: number };
+/** T-53：站点入口由能力表驱动，无搜索能力的站点（如 bing）不出现在这里 */
+const SEARCH_SITE_TABS = sitesWithCapability('search');
+
+/** 搜索页最小分辨率选项，值作为宽度下界拼入原站查询串 */
+const RESOLUTION_OPTIONS = [
+  { value: 0, label: '全部分辨率' },
+  { value: 1920, label: '≥1920×1080' },
+  { value: 2560, label: '≥2560×1440' },
+  { value: 3840, label: '≥3840×2160' }
+] as const;
+
+/** T-53：把最小分辨率转成原站可识别的宽度下界；不支持该能力的站点忽略 */
+function queryWithResolution(query: string, targetSite: AnySiteId, minWidth: number): string {
+  if (minWidth <= 0 || !siteSupports(targetSite, 'resolutionFilter')) return query;
+  return `${query} width:>=${minWidth}`.trim();
 }
 
-export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
-  // 07 DR-057：两站共用同一搜索链路，站点切换只影响请求的站点与本地状态分组
-  const [site, setSite] = useState<SiteId>('yande');
+/** T-53：需要密钥的站点在未配置时不可选，读取失败同样按未配置处理 */
+function siteKeyReady(providers: ProvidersConfig | null, targetSite: AnySiteId): boolean {
+  if (!siteSupports(targetSite, 'needsKey')) return true;
+  if (providers === null || !isProviderSiteId(targetSite)) return false;
+  return hasProviderKey(providers, targetSite);
+}
+
+export function SearchPage(): ReactElement {
+  // 07 DR-057：站点切换只影响请求的站点与本地状态分组
+  const [site, setSite] = useState<AnySiteId>('yande');
+  // DR-085：空查询加载站点首页，非空查询走关键词搜索
+  const [feedMode, setFeedMode] = useState<FeedMode>('home');
+  // T-59 / DR-088：榜单并入首页，首页可选热门/日/周/月榜与日期
+  const [rankingKind, setRankingKind] = useState<RankingKind>('popular');
+  const [rankingDate, setRankingDate] = useState<RankingDate>(() => todayRankingDate());
+  const rankingKindRef = useRef<RankingKind>('popular');
+  const rankingDateRef = useRef<RankingDate>(rankingDate);
   const [submittedQuery, setSubmittedQuery] = useState('');
+  // T-53：最小宽度筛选；0 表示全部，仅对支持 resolutionFilter 的站点生效
+  const [minResolution, setMinResolution] = useState(0);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadedPage, setLoadedPage] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -69,6 +117,8 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
   // T-21：收藏集合与已看独立，进入搜索时从本地 favorites 读取
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<number>>(() => new Set());
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
+  // T-50 / T-53：第三方站点需要 API key，未配置或读取失败时入口置灰
+  const [providers, setProviders] = useState<ProvidersConfig | null>(null);
   // DR-055：搜索历史在挂载时读取；记录/删除/清空都由主进程返回最新列表
   const [history, setHistory] = useState<string[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -91,6 +141,10 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
   // 请求序号用于丢弃过期响应；loadingRef 保证触底事件不会并发起重复请求
   const requestSeq = useRef(0);
   const loadingRef = useRef(false);
+  // DR-090：追页失败后暂停触底自动重试，避免滚动时反复请求、错误条反复出现导致页面抖动
+  const pagingErrorRef = useRef(false);
+  // 同步镜像已加载列表，供追页判断本页是否新增条目，避免与 React 提交时序竞争
+  const postsRef = useRef<Post[]>([]);
   // 同步镜像已看集合，供 IPC 回调判断是否需要回滚
   const viewedRef = useRef<ReadonlySet<number>>(new Set());
   // 同步镜像收藏集合，供乐观更新判断原状态
@@ -124,6 +178,12 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
   // 02 §6.3：过滤只在渲染层派生，posts 保留全部已加载数据；T-27 查询级入口以可见结果为准
   const visiblePosts = hideViewed ? filterUnviewed(posts, viewedIds) : posts;
   const selectedPosts = visiblePosts.filter((post) => selectedKeys.has(postSelectionKey(post)));
+
+  /** DR-087 / DR-088：moebooru 24 小时热门只有单页，首页选中热门时禁用翻页；期榜与 toplist 仍可翻页 */
+  const homePagingAllowed = (targetSite: AnySiteId, mode: FeedMode): boolean =>
+    mode !== 'home' ||
+    homeFeedFor(targetSite) !== 'ranking' ||
+    rankingSupportsPaging(rankingKindRef.current);
 
   // 02 §7.1 / DR-038：点击切换单项；Shift 从锚点连续并入当前可见项
   const handleToggleSelect = useCallback(
@@ -165,27 +225,30 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
    * 02 §7.5 / DR-038：按 ≤100 分片提交并汇总；失败分片不阻断其余分片，
    * 有失败时保留选中，便于用户直接重试。
    */
-  const runBatch = useCallback(async (targets: Post[]): Promise<void> => {
-    if (targets.length === 0) return;
-    setPendingBatch(null);
-    setBatchBusy(true);
-    setBatchNotice(null);
-    setBatchError(null);
-    try {
-      const summary = await enqueueDownloadBatch(targets, site, (input) =>
-        window.booru.enqueueDownloads(input)
-      );
-      setBatchNotice(describeBatchSummary(summary));
-      if (summary.failed > 0) {
-        setBatchError(`有 ${summary.failed} 张加入失败，可稍后重试`);
-      } else {
-        setSelectedKeys(new Set());
-        setSelectionAnchor(null);
+  const runBatch = useCallback(
+    async (targets: Post[]): Promise<void> => {
+      if (targets.length === 0) return;
+      setPendingBatch(null);
+      setBatchBusy(true);
+      setBatchNotice(null);
+      setBatchError(null);
+      try {
+        const summary = await enqueueDownloadBatch(targets, site, (input) =>
+          window.booru.enqueueDownloads(input)
+        );
+        setBatchNotice(describeBatchSummary(summary));
+        if (summary.failed > 0) {
+          setBatchError(`有 ${summary.failed} 张加入失败，可稍后重试`);
+        } else {
+          setSelectedKeys(new Set());
+          setSelectionAnchor(null);
+        }
+      } finally {
+        setBatchBusy(false);
       }
-    } finally {
-      setBatchBusy(false);
-    }
-  }, [site]);
+    },
+    [site]
+  );
 
   const requestBatch = useCallback(
     (targets: Post[]): void => {
@@ -210,6 +273,22 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
       setFavoriteError(null);
     });
   }, [site, updateFavorites, updateFillProgress, updateViewed]);
+
+  // T-50：读取图库密钥状态；失败按未配置处理，不影响其他站点
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const result = await window.booru.getSettings();
+        if (active && result.ok) setProviders(result.data.settings.providers);
+      } catch {
+        // 未配置或读取失败时第三方站点入口保持置灰
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // DR-055：启动时读取历史；失败只提示，不影响搜索
   useEffect(() => {
@@ -354,13 +433,30 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
       searchQuery: string,
       page: number,
       seq: number,
-      targetSite: SiteId
+      targetSite: AnySiteId,
+      minWidth: number,
+      mode: FeedMode
     ): Promise<PagePayload> => {
-      const result = await window.booru.searchPosts({
-        site: targetSite,
-        query: searchQuery,
-        page
-      });
+      // DR-085 / DR-087 / DR-088：yande / konachan 首页按当前榜单类型请求；
+      // 默认热门走 popular_recent period=1d（konachan 当日榜在当天结束前几乎为空）
+      const result =
+        mode === 'home' && homeFeedFor(targetSite) === 'ranking'
+          ? await window.booru.listRankings(
+              rankingKindRef.current === 'popular'
+                ? { site: targetSite, kind: rankingKindRef.current, page }
+                : {
+                    site: targetSite,
+                    kind: rankingKindRef.current,
+                    date: rankingDateRef.current,
+                    page
+                  }
+            )
+          : await window.booru.searchPosts({
+              // 首页按站点自身热门排序，拼入宽度筛选会把空查询变成关键词查询（wallhaven 会退回 relevance）
+              site: targetSite,
+              query: mode === 'home' ? '' : queryWithResolution(searchQuery, targetSite, minWidth),
+              page
+            });
       if (!result.ok || result.data.posts.length === 0) return { result, viewedIds: [] };
 
       try {
@@ -383,12 +479,20 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
   );
 
   const runSearch = useCallback(
-    async (searchQuery: string, targetSite: SiteId): Promise<void> => {
+    async (
+      searchQuery: string,
+      targetSite: AnySiteId,
+      minWidth: number,
+      mode: FeedMode = 'search'
+    ): Promise<void> => {
       requestSeq.current += 1;
       const seq = requestSeq.current;
+      pagingErrorRef.current = false;
       loadingRef.current = true;
+      setFeedMode(mode);
       setLoading(true);
       setError(null);
+      postsRef.current = [];
       setPosts([]);
       setLoadedPage(0);
       setHasMore(true);
@@ -409,10 +513,8 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
       updateFillProgress(INITIAL_FILL_PROGRESS);
 
       // 收藏状态与搜索并行读取；收藏只读本地，不请求站点（T-21）
-      const favoritesPromise = window.booru
-        .listFavorites({ site: targetSite })
-        .catch(() => null);
-      const payload = await requestPage(searchQuery, 1, seq, targetSite);
+      const favoritesPromise = window.booru.listFavorites({ site: targetSite }).catch(() => null);
+      const payload = await requestPage(searchQuery, 1, seq, targetSite, minWidth, mode);
       if (requestSeq.current !== seq) return;
 
       loadingRef.current = false;
@@ -432,40 +534,36 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
 
       const pagePosts = payload.result.data.posts;
       updateViewed((previous) => withViewedIds(previous, payload.viewedIds));
+      postsRef.current = pagePosts;
       setPosts(pagePosts);
       setLoadedPage(1);
-      setHasMore(pagePosts.length > 0);
+      setHasMore(homePagingAllowed(targetSite, mode) && pagePosts.length > 0);
       setR18Filtered(payload.result.data.r18Filtered === true);
       setBlacklistFiltered(payload.result.data.blacklistFiltered ?? 0);
-      recordHistory(searchQuery);
+      // DR-085：首页（24 小时热门）不写入搜索历史
+      if (mode === 'search' && searchQuery.trim() !== '') recordHistory(searchQuery);
     },
     [recordHistory, requestPage, updateFavorites, updateFillProgress, updateViewed, clearSelection]
   );
 
-  const externalSeq = externalQuery?.seq ?? 0;
-  // DR-041：只在 App 转入新的外部查询（seq 变化）时执行一次；
-  // runSearch 的引用会随状态变化，放入依赖会导致每次渲染都重新搜索。
-  // 用宏任务触发，避免在 effect 内同步 setState（react-hooks/set-state-in-effect）。
+  // DR-085：应用打开后先展示默认站点首页（yande 热门），不再停留在空状态
   useEffect(() => {
-    if (externalQuery === undefined) return;
-    const trimmed = externalQuery.query.trim();
-    if (trimmed === '') return;
-    // DR-057：从榜单跳转时沿用来源站点，避免在另一个站点上搜同名标签
-    const targetSite = externalQuery.site ?? site;
     const timer = window.setTimeout(() => {
-      setSite(targetSite);
-      setSubmittedQuery(trimmed);
-      void runSearch(trimmed, targetSite);
+      void runSearch('', site, minResolution, 'home');
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [externalSeq]);
+  }, []);
 
   const loadMore = useCallback(
     async (autoFill: boolean): Promise<void> => {
-      if (loadingRef.current || !hasMore || submittedQuery === '') return;
+      if (loadingRef.current || !hasMore) return;
+      // DR-085：首页模式允许空查询翻页；关键词模式仍需有效查询
+      if (submittedQuery === '' && feedMode !== 'home') return;
+      // DR-087 / DR-088：首页热门固定单页，选中热门时不再请求后续页
+      if (!homePagingAllowed(site, feedMode)) return;
 
       const seq = requestSeq.current;
       const nextPage = loadedPage + 1;
@@ -473,21 +571,39 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
       setLoading(true);
       setError(null);
 
-      const payload = await requestPage(submittedQuery, nextPage, seq, site);
+      const payload = await requestPage(
+        submittedQuery,
+        nextPage,
+        seq,
+        site,
+        minResolution,
+        feedMode
+      );
       if (requestSeq.current !== seq) return;
 
       loadingRef.current = false;
       setLoading(false);
       if (!payload.result.ok) {
         setError(payload.result.error);
+        // DR-090：失败后保留错误条与重试按钮，不再随滚动自动重试
+        pagingErrorRef.current = true;
         return;
       }
+      pagingErrorRef.current = false;
 
       const pagePosts = payload.result.data.posts;
       updateViewed((previous) => withViewedIds(previous, payload.viewedIds));
-      setPosts((previous) => mergePosts(previous, pagePosts));
+      // DR-090：站点深翻可能返回重复页；本页没有新增条目即视为到底，避免触底无限请求
+      const previousPosts = postsRef.current;
+      const merged = mergePosts(previousPosts, pagePosts);
+      postsRef.current = merged;
+      setPosts(merged);
       setLoadedPage(nextPage);
-      setHasMore(pagePosts.length > 0);
+      setHasMore(
+        homePagingAllowed(site, feedMode) &&
+          pagePosts.length > 0 &&
+          merged.length > previousPosts.length
+      );
 
       // 02 §6.3：只有自动补页参与"连续 5 页无未看项"的计数
       if (autoFill) {
@@ -496,43 +612,137 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
         );
       }
     },
-    [hasMore, loadedPage, requestPage, site, submittedQuery, updateFillProgress, updateViewed]
+    [
+      feedMode,
+      hasMore,
+      loadedPage,
+      minResolution,
+      requestPage,
+      site,
+      submittedQuery,
+      updateFillProgress,
+      updateViewed
+    ]
   );
 
   // 02 §6.3：过滤后视口未填满时自动请求下一页，连续 5 页无未看项即停止并提示
   const handleUnderfilled = useCallback((): void => {
     if (!hideViewed || loadingRef.current) return;
-    if (!hasSearched || submittedQuery === '' || !hasMore) return;
+    if (!hasSearched || !hasMore) return;
+    if (submittedQuery === '' && feedMode !== 'home') return;
     if (isAutoFillExhausted(fillProgressRef.current)) return;
     void loadMore(true);
-  }, [hasMore, hasSearched, hideViewed, loadMore, submittedQuery]);
+  }, [feedMode, hasMore, hasSearched, hideViewed, loadMore, submittedQuery]);
 
   const handleSubmit = (query: string): void => {
     const trimmed = query.trim();
-    if (trimmed === '' || loadingRef.current) return;
+    if (loadingRef.current) return;
+    // DR-085：空查询返回站点首页（日榜 / 热门），其余站点保持原行为
+    if (trimmed === '' && homeFeedFor(site) === null) return;
     setSubmittedQuery(trimmed);
-    void runSearch(trimmed, site);
+    void runSearch(trimmed, site, minResolution, trimmed === '' ? 'home' : 'search');
   };
 
-  // 07 DR-057：切站后按当前关键词在新站点重搜；未搜索过则只切站并清理临时状态
-  const handleSiteChange = (next: SiteId): void => {
+  // DR-086：切站即切换站点视图，不保留上一站点的结果；页面回到该站点首页，不自动重搜旧关键词
+  // DR-079：runSearch 会递增序号，旧站点在途响应自动作废
+  const handleSiteChange = (next: AnySiteId): void => {
     if (next === site) return;
-    if (loadingRef.current) return;
     setSite(next);
-    if (submittedQuery === '') {
-      setViewerIndex(null);
-      setSelectMode(false);
-      setContextMenu(null);
-      clearSelection();
-      return;
+    // 清空已提交查询，避免随后的翻页/筛选把旧关键词带到新站点
+    setSubmittedQuery('');
+    setViewerIndex(null);
+    setSelectMode(false);
+    setContextMenu(null);
+    clearSelection();
+    void runSearch('', next, minResolution, 'home');
+  };
+
+  const today = todayRankingDate();
+  const maxRankingDate = formatRankingDateInput(today);
+  const rankingWeek = isoWeekOf(rankingDate);
+  const currentWeek = isoWeekOf(today);
+
+  // 周榜按「周历年份 + 周数」选择；当年只到当前周，过去年份可选全年
+  const weekYearOptions: number[] = [];
+  for (let year = 2005; year <= currentWeek.year; year += 1) weekYearOptions.push(year);
+  const maxWeek =
+    rankingWeek.year === currentWeek.year ? currentWeek.week : isoWeeksInYear(rankingWeek.year);
+  const weekOptions: number[] = [];
+  for (let week = 1; week <= maxWeek; week += 1) weekOptions.push(week);
+
+  // 月榜按「年份 + 月份」选择；当年只到当前月
+  const monthYearOptions: number[] = [];
+  for (let year = 2005; year <= today.year; year += 1) monthYearOptions.push(year);
+  const maxMonth = rankingDate.year === today.year ? today.month : 12;
+  const rankingPeriodLabel =
+    feedMode === 'home' && siteSupports(site, 'rankings') && rankingKind !== 'popular'
+      ? ` · ${formatRankingPeriodLabel(rankingKind, rankingDate)}`
+      : '';
+
+  // T-59 / DR-088：首页切换榜单类型或日期后按当前站点重新加载；已提交关键词时保持搜索结果
+  const handleRankingKindChange = (next: RankingKind): void => {
+    if (next === rankingKind) return;
+    rankingKindRef.current = next;
+    setRankingKind(next);
+    // DR-091：日/周/月榜默认展示上一个完整周期，避免进行中的当天/本周/本月结果偏少
+    if (next !== 'popular') {
+      const nextDate = defaultRankingDate(next);
+      rankingDateRef.current = nextDate;
+      setRankingDate(nextDate);
     }
-    void runSearch(submittedQuery, next);
+    if (feedMode === 'home') void runSearch('', site, minResolution, 'home');
+  };
+
+  const applyRankingDate = (next: RankingDate): void => {
+    // 02 §4：不可选未来日期/周/月（以所选周期的起始日比较）
+    if (formatRankingDateInput(next) > maxRankingDate) return;
+    rankingDateRef.current = next;
+    setRankingDate(next);
+    if (feedMode === 'home') void runSearch('', site, minResolution, 'home');
+  };
+
+  const handleRankingDateChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const next = parseRankingDateInput(event.target.value);
+    if (next !== null) applyRankingDate(next);
+  };
+
+  const handleRankingWeekYearChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    const year = Number(event.target.value);
+    if (!Number.isInteger(year) || year < 2005) return;
+    applyRankingDate(dateFromIsoWeek(year, Math.min(rankingWeek.week, isoWeeksInYear(year))));
+  };
+
+  const handleRankingWeekChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    const week = Number(event.target.value);
+    if (!Number.isInteger(week) || week < 1 || week > isoWeeksInYear(rankingWeek.year)) return;
+    applyRankingDate(dateFromIsoWeek(rankingWeek.year, week));
+  };
+
+  const handleRankingMonthYearChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    const year = Number(event.target.value);
+    if (!Number.isInteger(year) || year < 2005) return;
+    applyRankingDate({ year, month: rankingDate.month, day: 1 });
+  };
+
+  const handleRankingMonthChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    const month = Number(event.target.value);
+    if (!Number.isInteger(month) || month < 1 || month > 12) return;
+    applyRankingDate({ year: rankingDate.year, month, day: 1 });
+  };
+
+  // T-53：分辨率变化后按当前关键词重新搜索；未搜索过时只更新筛选状态
+  const handleResolutionChange = (value: number): void => {
+    setMinResolution(value);
+    if (loadingRef.current || submittedQuery === '') return;
+    void runSearch(submittedQuery, site, value);
   };
 
   const handleRetry = (): void => {
     if (loadingRef.current) return;
+    // DR-090：手动重试解除追页失败后的自动重试暂停
+    pagingErrorRef.current = false;
     if (loadedPage === 0) {
-      void runSearch(submittedQuery, site);
+      void runSearch(submittedQuery, site, minResolution, feedMode);
       return;
     }
     void loadMore(false);
@@ -568,11 +778,15 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
     if (trimmed === '') return;
     // 从查看器发起新查询时无条件重置列表，同时作废旧的在途翻页请求
     setSubmittedQuery(trimmed);
-    void runSearch(trimmed, site);
+    void runSearch(trimmed, site, minResolution);
   };
 
   // 02 §6.3：visiblePosts 已在批处理逻辑前派生，这里只做展示用计数
   const filteredViewedCount = posts.length - visiblePosts.length;
+  // T-53：能力表驱动的密钥门禁；未配置的站点统一置灰并提示
+  const keyDisabledSites = SEARCH_SITE_TABS.filter((id) => !siteKeyReady(providers, id));
+  const resolutionEnabled = siteSupports(site, 'resolutionFilter');
+  const resolutionApplied = resolutionEnabled && minResolution > 0;
   const fillExhausted = isAutoFillExhausted(fillProgress);
   const showEmptyResult = hasSearched && !loading && error === null && posts.length === 0;
   const selectedEstimateLabel = formatBatchSize(estimateBatchSize(selectedPosts));
@@ -583,9 +797,11 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
     <main className="search-page">
       <header className="search-page__header">
         <div className="search-page__title">
-          <h1>搜索</h1>
+          <h1>首页</h1>
           <p className="search-page__count">
-            {hasSearched ? `已显示 ${visiblePosts.length} 条 · ${SITE_LABELS[site]}` : SITE_LABELS[site]}
+            {hasSearched
+              ? `已显示 ${visiblePosts.length} 条 · ${SITE_LABELS[site]}${feedMode === 'home' && siteSupports(site, 'rankings') ? ` · ${RANKING_LABELS[rankingKind]}${rankingPeriodLabel}` : ''}${resolutionApplied ? ` · 宽度 ≥${minResolution}` : ''}`
+              : SITE_LABELS[site]}
           </p>
           {hideViewed ? (
             <p className="search-page__filter-hint">已过滤 {filteredViewedCount} 张已看</p>
@@ -599,6 +815,11 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
           {blacklistFiltered > 0 ? (
             <p className="search-page__filter-hint" role="status">
               已按标签黑名单排除 {blacklistFiltered} 个标签
+            </p>
+          ) : null}
+          {keyDisabledSites.length > 0 ? (
+            <p className="search-page__filter-hint">
+              {`${keyDisabledSites.map((id) => SITE_LABELS[id]).join(' / ')} 需要 API key，未配置前不可选（设置 → 图库服务）`}
             </p>
           ) : null}
           {viewError !== null ? (
@@ -619,28 +840,140 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
         </div>
         {/* 07 DR-057：站点切换复用收藏页的 site-tabs 样式（02 §2.1） */}
         <span className="site-tabs" role="group" aria-label="站点切换">
-          {SITE_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className="site-tabs__item"
-              aria-pressed={site === id}
-              disabled={loading}
-              onClick={() => handleSiteChange(id)}
-            >
-              {SITE_LABELS[id]}
-            </button>
-          ))}
+          {SEARCH_SITE_TABS.map((id) => {
+            const ready = siteKeyReady(providers, id);
+            return (
+              <button
+                key={id}
+                type="button"
+                className="site-tabs__item"
+                aria-pressed={site === id}
+                disabled={!ready}
+                title={ready ? undefined : '未配置 API key，请在设置 → 图库服务中填写'}
+                onClick={() => handleSiteChange(id)}
+              >
+                {SITE_LABELS[id]}
+              </button>
+            );
+          })}
         </span>
         <SearchBar
           site={site}
           disabled={loading}
+          suggestEnabled={siteSupports(site, 'suggest')}
           history={history}
           onSubmit={handleSubmit}
           onSelectHistory={handleSubmit}
           onDeleteHistory={handleDeleteHistory}
           onClearHistory={handleClearHistory}
         />
+        {resolutionEnabled ? (
+          <select
+            className="search-resolution"
+            value={minResolution}
+            aria-label="最小分辨率"
+            disabled={loading}
+            onChange={(event) => {
+              handleResolutionChange(Number(event.target.value));
+            }}
+          >
+            {RESOLUTION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {feedMode === 'home' && siteSupports(site, 'rankings') ? (
+          <>
+            <span className="site-tabs" role="group" aria-label="榜单类型">
+              {RANKING_KINDS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="site-tabs__item"
+                  aria-pressed={rankingKind === value}
+                  onClick={() => {
+                    handleRankingKindChange(value);
+                  }}
+                >
+                  {RANKING_LABELS[value]}
+                </button>
+              ))}
+            </span>
+            {rankingNeedsDate(rankingKind) ? (
+              rankingKind === 'week' ? (
+                <>
+                  <select
+                    className="search-date"
+                    aria-label="榜单周数年份"
+                    value={rankingWeek.year}
+                    disabled={loading}
+                    onChange={handleRankingWeekYearChange}
+                  >
+                    {weekYearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year} 年
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="search-date"
+                    aria-label="榜单周数"
+                    value={rankingWeek.week}
+                    disabled={loading}
+                    onChange={handleRankingWeekChange}
+                  >
+                    {weekOptions.map((week) => (
+                      <option key={week} value={week}>
+                        第 {week} 周
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : rankingKind === 'month' ? (
+                <>
+                  <select
+                    className="search-date"
+                    aria-label="榜单月份年份"
+                    value={rankingDate.year}
+                    disabled={loading}
+                    onChange={handleRankingMonthYearChange}
+                  >
+                    {monthYearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year} 年
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="search-date"
+                    aria-label="榜单月份"
+                    value={rankingDate.month}
+                    disabled={loading}
+                    onChange={handleRankingMonthChange}
+                  >
+                    {Array.from({ length: maxMonth }, (_, index) => index + 1).map((month) => (
+                      <option key={month} value={month}>
+                        {month} 月
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <input
+                  type="date"
+                  className="search-date"
+                  aria-label="榜单日期"
+                  value={formatRankingDateInput(rankingDate)}
+                  max={maxRankingDate}
+                  disabled={loading}
+                  onChange={handleRankingDateChange}
+                />
+              )
+            ) : null}
+          </>
+        ) : null}
         <Switch
           checked={hideViewed}
           label="隐藏已看"
@@ -681,7 +1014,11 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
             favoritedIds={favoriteIds}
             selectedKeys={selectedKeys}
             loading={loading}
-            onNearEnd={() => void loadMore(false)}
+            onNearEnd={() => {
+              // DR-090：追页失败后不再随滚动自动重试，等用户点错误条上的重试
+              if (pagingErrorRef.current) return;
+              void loadMore(false);
+            }}
             onUnderfilled={handleUnderfilled}
             onToggleFavorite={toggleFavorite}
             onToggleSelect={selectMode ? handleToggleSelect : undefined}
@@ -690,10 +1027,21 @@ export function SearchPage({ externalQuery }: SearchPageProps): ReactElement {
           />
         ) : loading ? (
           <div className="state-view" role="status">
-            <p className="state-view__title">正在搜索…</p>
+            <p className="state-view__title">
+              {feedMode === 'home' ? '正在加载首页…' : '正在搜索…'}
+            </p>
+            {site === 'konachan' ? (
+              <p className="state-view__description">
+                正在通过 Cloudflare 验证，首次访问可能需要 10~25 秒，请稍候。
+              </p>
+            ) : null}
           </div>
         ) : showEmptyResult ? (
-          <EmptyState title="没有匹配的图片" description="试试减少标签或换用更宽泛的查询" />
+          feedMode === 'home' ? (
+            <EmptyState title="该榜单暂时没有结果" description="试试换一个日期或榜单类型" />
+          ) : (
+            <EmptyState title="没有匹配的图片" description="试试减少标签或换用更宽泛的查询" />
+          )
         ) : (
           <EmptyState
             title="输入标签开始搜索"

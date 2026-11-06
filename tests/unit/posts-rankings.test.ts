@@ -108,6 +108,18 @@ describe('posts:rankings 入参校验', () => {
 });
 
 describe('posts:rankings 适配器调用', () => {
+  it('站点没有榜单能力时返回 CONFIG（DR-070）', async () => {
+    const handler = createPostsRankingsHandler({
+      getAdapter: () => ({}),
+      isExplicitAllowed: () => true,
+      getBlacklist: () => []
+    });
+
+    const result = await handler({ site: 'yande', kind: 'popular' });
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'CONFIG', retryable: false } });
+  });
+
   it('热门不传日期；page 透传给游标（适配器内部忽略）', async () => {
     const { adapter, calls } = createFakeAdapter();
     const handler = createHandler(adapter, true);

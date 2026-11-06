@@ -1,15 +1,12 @@
 import { join } from 'node:path';
 
 import { bootstrap, closeStorage, initStorage } from '@main/bootstrap';
-import { registerIpcHandlers } from '@main/ipc/registry';
+import { refreshFollowsOnStartup, registerIpcHandlers } from '@main/ipc/registry';
 import { getConfigPath, readConfig } from '@main/network/hostmap';
+import { prewarmKonachan } from '@main/network/http-site';
 import { applyProxyConfig } from '@main/network/proxy';
-import {
-  DEFAULT_WINDOW_SIZE,
-  MIN_WINDOW_SIZE,
-  WINDOW_BACKGROUND_COLOR
-} from '@shared/constants';
-import { app, BrowserWindow, dialog, nativeTheme, shell } from 'electron';
+import { resolveWindowBounds, WINDOW_BACKGROUND_COLOR } from '@shared/constants';
+import { app, BrowserWindow, dialog, nativeTheme, screen, shell } from 'electron';
 
 // 单实例锁必须在 ready 之前申请：拿不到锁说明已有实例在运行
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -17,11 +14,13 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let mainWindow: BrowserWindow | null = null;
 
 function createMainWindow(): void {
+  // DR-080：按主屏可用区域收敛，小屏 / 高 DPI 下默认尺寸不超出屏幕
+  const bounds = resolveWindowBounds(screen.getPrimaryDisplay().workAreaSize);
   const window = new BrowserWindow({
-    width: DEFAULT_WINDOW_SIZE.width,
-    height: DEFAULT_WINDOW_SIZE.height,
-    minWidth: MIN_WINDOW_SIZE.width,
-    minHeight: MIN_WINDOW_SIZE.height,
+    width: bounds.width,
+    height: bounds.height,
+    minWidth: bounds.minWidth,
+    minHeight: bounds.minHeight,
     show: false,
     backgroundColor: WINDOW_BACKGROUND_COLOR,
     webPreferences: {
@@ -100,9 +99,15 @@ if (!hasSingleInstanceLock) {
     // DR-039：代理只能在 app ready 后应用；复检与探测不阻塞窗口创建
     await applyProxyConfig(readConfig(getConfigPath()).network.proxy);
 
-    app.setAppUserModelId('com.bluu.app');
+    app.setAppUserModelId('com.lepic.app');
     registerIpcHandlers();
     createMainWindow();
+    // DR-068：主窗口先展示，随后后台完成 konachan 的 CF 验证，用户点进 konachan 时通常已就绪
+    prewarmKonachan();
+    // DR-069：错开 CF 预热与搜索首屏，延迟 3s 后台刷新关注；失败静默
+    setTimeout(() => {
+      refreshFollowsOnStartup();
+    }, 3000);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

@@ -2,17 +2,20 @@ import { type CfChannel, createCfChannel } from '@main/network/cloudflare';
 import { createHttpClient, type HttpClient, type HttpTransport } from '@main/network/http';
 import { createRateLimiter, type RateLimiter } from '@main/network/rate-limiter';
 import { getSession } from '@main/network/sessions';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId, SiteId } from '@shared/constants';
 import { AppErrorException, createAppError } from '@shared/errors';
 import { siteBaseUrl } from '@shared/sites';
 
-const clients = new Map<SiteId, HttpClient>();
-const limiters = new Map<SiteId, RateLimiter>();
+const clients = new Map<AnySiteId, HttpClient>();
+const limiters = new Map<AnySiteId, RateLimiter>();
 const cfChannels = new Map<SiteId, CfChannel>();
 
-/** yande 无 CF：走 ses.fetch，与 cookie/代理/映射共用同一网络栈（DR-005） */
-const createYandeTransport = (): HttpTransport => {
-  const ses = getSession('yande');
+/**
+ * 无 CF 的站点统一走 `ses.fetch`，与 cookie/代理/映射共用同一网络栈（DR-005）。
+ * 07 DR-070：yande 与 wallhaven/bing 共用该通道，每个站点取自己的 session。
+ */
+const createSessionTransport = (site: AnySiteId): HttpTransport => {
+  const ses = getSession(site);
   return async (url, request) => {
     const response = await ses.fetch(url, {
       method: 'GET',
@@ -44,7 +47,7 @@ const createKonachanTransport =
     }
   };
 
-const getLimiter = (site: SiteId): RateLimiter => {
+const getLimiter = (site: AnySiteId): RateLimiter => {
   const cached = limiters.get(site);
   if (cached) return cached;
   // 每站点独立令牌桶，默认 2 req/s（03 §4.4）
@@ -61,13 +64,26 @@ const getCfChannel = (site: SiteId): CfChannel => {
   return channel;
 };
 
+/**
+ * DR-068：启动后后台预热 konachan 的 CF 通道。
+ * 失败静默，用户真正发起请求时仍走原有重试/报错逻辑，避免启动噪音。
+ */
+export function prewarmKonachan(): void {
+  void getCfChannel('konachan')
+    .prewarm()
+    .catch(() => undefined);
+}
+
 /** 站点级单例：同一站点的所有请求共享限速器与通道，避免多套状态并存 */
-export function getHttpClient(site: SiteId): HttpClient {
+export function getHttpClient(site: AnySiteId): HttpClient {
   const cached = clients.get(site);
   if (cached) return cached;
 
+  // 07 DR-070：只有 konachan 需要 CF 隐藏窗口通道，其余站点（含第三方图库）走 ses.fetch
   const transport =
-    site === 'yande' ? createYandeTransport() : createKonachanTransport(getCfChannel(site));
+    site === 'konachan'
+      ? createKonachanTransport(getCfChannel(site))
+      : createSessionTransport(site);
   const client = createHttpClient({ site, transport, limiter: getLimiter(site) });
   clients.set(site, client);
   return client;

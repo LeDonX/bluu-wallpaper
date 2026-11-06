@@ -1,7 +1,7 @@
 import { createTagsSuggestHandler } from '@main/ipc/handlers/tags-suggest';
 import type { MoebooruAdapter } from '@main/sites/moebooru';
 import type { TagCache } from '@main/storage/tags';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import { AppErrorException, createAppError } from '@shared/errors';
 import type { TagSuggestion } from '@shared/models';
 import { describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 const hatsune: TagSuggestion = { name: 'hatsune_miku', type: 'character', count: 12321 };
 
 interface FindCall {
-  site: SiteId;
+  site: AnySiteId;
   prefix: string;
   limit: number;
 }
@@ -70,6 +70,15 @@ describe('tags:suggest 入参校验', () => {
 });
 
 describe('tags:suggest 本地优先与远端兜底', () => {
+  it('站点没有联想能力时返回 CONFIG，不发起远端请求（DR-070）', async () => {
+    const { cache } = createFakeCache();
+    const handler = createTagsSuggestHandler({ getAdapter: () => ({}), cache });
+
+    const result = await handler({ site: 'yande', prefix: 'hatsune' });
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'CONFIG', retryable: false } });
+  });
+
   it('本地命中时直接返回，不请求远端', async () => {
     const { cache } = createFakeCache([hatsune]);
     const { adapter, calls } = createFakeAdapter();

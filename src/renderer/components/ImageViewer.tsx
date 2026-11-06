@@ -1,4 +1,5 @@
 import { useImageSnapshot } from '@renderer/hooks/useImageSnapshot';
+import { isSiteId } from '@shared/constants';
 import {
   downloadProgressRatio,
   downloadSource,
@@ -78,6 +79,8 @@ export function ImageViewer({
 }: ImageViewerProps): ReactElement | null {
   const post = posts[index];
   const currentSite = post?.site;
+  /** 关注只支持 booru 站点；第三方图库没有标签体系 */
+  const followSite = isSiteId(currentSite) ? currentSite : undefined;
   const currentPostId = post?.id;
   const sample = useImageSnapshot(post?.sampleUrl ?? '');
   const original = useImageSnapshot(post?.fileUrl ?? '');
@@ -87,6 +90,10 @@ export function ImageViewer({
   const [downloadError, setDownloadError] = useState<{ postId: number; message: string } | null>(
     null
   );
+  /** 07 DR-069：查看器内关注标签；集合按当前站点加载 */
+  const [followedTags, setFollowedTags] = useState<ReadonlySet<string>>(() => new Set());
+  const [followPendingTag, setFollowPendingTag] = useState<string | null>(null);
+  const [followError, setFollowError] = useState<{ postId: number; message: string } | null>(null);
   /** DR-050：当前图片已完成的任务，存在时信息栏改为展示打开文件夹与重新下载 */
   const [downloadedTask, setDownloadedTask] = useState<{
     postId: number;
@@ -122,6 +129,58 @@ export function ImageViewer({
       window.clearTimeout(timer);
     };
   }, [currentSite, currentPostId]);
+
+  // DR-069：切站时重读关注标签，只影响按钮文案，失败静默
+  useEffect(() => {
+    if (followSite === undefined) return;
+    let active = true;
+    void (async () => {
+      try {
+        const result = await window.booru.listFollows({ site: followSite });
+        if (!active || !result.ok) return;
+        setFollowedTags(new Set(result.data.map((item) => item.tag)));
+      } catch {
+        // 关注状态读取失败不阻断查看器
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [followSite]);
+
+  // DR-069：标签关注入口；成功后立即切换为「已关注」，首次拉取失败给出内联提示
+  const handleFollowTag = useCallback(
+    (name: string): void => {
+      if (post === undefined) return;
+      const target = post;
+      if (!isSiteId(target.site)) return;
+      const site = target.site;
+      setFollowPendingTag(name);
+      setFollowError(null);
+      void (async () => {
+        try {
+          const result = await window.booru.addFollow({ site, tag: name });
+          if (!result.ok) {
+            setFollowError({ postId: target.id, message: result.error.message });
+            return;
+          }
+          setFollowedTags((current) => {
+            const next = new Set(current);
+            next.add(result.data.subscription.tag);
+            return next;
+          });
+          if (result.data.warning !== null) {
+            setFollowError({ postId: target.id, message: result.data.warning });
+          }
+        } catch {
+          setFollowError({ postId: target.id, message: '关注失败' });
+        } finally {
+          setFollowPendingTag(null);
+        }
+      })();
+    },
+    [post]
+  );
 
   // 02 §5.3 / T-23：D 键与信息栏按钮都走同一入队逻辑，结果与进度在信息栏展示
   const handleDownload = useCallback(
@@ -462,6 +521,14 @@ export function ImageViewer({
               onReveal={handleReveal}
               onRedownload={handleRedownload}
               onTagSearch={onTagSearch}
+              onFollowTag={handleFollowTag}
+              followedTags={followedTags}
+              followPendingTag={followPendingTag}
+              followError={
+                followError !== null && followError.postId === post.id
+                  ? followError.message
+                  : null
+              }
             />
           ) : null}
         </div>

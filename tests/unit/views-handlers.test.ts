@@ -1,11 +1,11 @@
 import { createViewsListHandler } from '@main/ipc/handlers/views-list';
 import { createViewsMarkHandler } from '@main/ipc/handlers/views-mark';
 import type { ViewsStore } from '@main/storage/views';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import { describe, expect, it } from 'vitest';
 
 interface MarkCall {
-  site: SiteId;
+  site: AnySiteId;
   postIds: readonly number[];
 }
 

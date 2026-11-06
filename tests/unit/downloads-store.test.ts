@@ -32,7 +32,7 @@ describeWithSqlite('下载任务存储（T-23 / 迁移 004）', () => {
 
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'booru-downloads-'));
-    database = new (DatabaseSync as DatabaseSyncConstructor)(join(directory, 'bluu.db'));
+    database = new (DatabaseSync as DatabaseSyncConstructor)(join(directory, 'lepic.db'));
     applyMigrations(database);
   });
 

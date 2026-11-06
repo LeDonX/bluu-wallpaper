@@ -1,7 +1,7 @@
 import { createFavoritesListHandler } from '@main/ipc/handlers/favorites-list';
 import { createFavoritesToggleHandler } from '@main/ipc/handlers/favorites-toggle';
 import type { FavoritesStore } from '@main/storage/favorites';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import type { FavoriteEntry } from '@shared/favorites';
 import type { Post } from '@shared/models';
 import { describe, expect, it } from 'vitest';
@@ -29,7 +29,7 @@ function makePost(id: number, overrides: Partial<Post> = {}): Post {
 }
 
 const createFakeStore = (entries: FavoriteEntry[] = []): FavoritesStore => {
-  const toggles: Array<{ site: SiteId; post: Post }> = [];
+  const toggles: Array<{ site: AnySiteId; post: Post }> = [];
   const store: FavoritesStore = {
     toggle: (site, post) => {
       toggles.push({ site, post });

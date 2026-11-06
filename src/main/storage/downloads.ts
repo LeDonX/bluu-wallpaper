@@ -1,5 +1,6 @@
 import type { SqlDatabase } from '@main/storage/db';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
+import { isAnySiteId } from '@shared/constants';
 import type { DownloadStatus, DownloadTask } from '@shared/downloads';
 
 /** 02 §7.2 / 03 §6.1：`download_tasks` 的读写，队列只通过本模块改状态 */
@@ -22,12 +23,12 @@ export interface DownloadsStore {
   /** 启动时把上次进程中断的 downloading/verifying 重置为 queued，返回条数 */
   resetInterrupted(now: number): number;
   /** 02 §7.4：该站点是否已成功下过同一 md5（DR-037） */
-  findCompletedMd5(site: SiteId, md5: string): boolean;
+  findCompletedMd5(site: AnySiteId, md5: string): boolean;
 }
 
 export interface CreateDownloadTask {
   id: string;
-  site: SiteId;
+  site: AnySiteId;
   postId: number;
   url: string;
   md5: string | null;
@@ -72,9 +73,9 @@ function isStatus(value: string): value is DownloadStatus {
   return STATUSES.includes(value);
 }
 
-/** 数据库里的站点由入队时校验过的 SiteId 写入；异常值按 yande 读回，避免整表不可用 */
-function toSite(value: string): SiteId {
-  return value === 'konachan' ? 'konachan' : 'yande';
+/** 数据库里的站点由入队时校验过的站点标识写入；异常值按 yande 读回，避免整表不可用 */
+function toSite(value: string): AnySiteId {
+  return isAnySiteId(value) ? value : 'yande';
 }
 
 function toTask(row: TaskRow): DownloadTask {

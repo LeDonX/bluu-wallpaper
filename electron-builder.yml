@@ -1,5 +1,5 @@
-appId: com.bluu.app
-productName: Bluu
+appId: com.lepic.app
+productName: LePic
 copyright: Copyright © 2026 LeDon
 
 directories:
@@ -31,7 +31,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Bluu
+  shortcutName: LePic
   deleteAppDataOnUninstall: false
 
 # DR-066：自动更新使用 GitHub Release（生成 app-update.yml + latest.yml）

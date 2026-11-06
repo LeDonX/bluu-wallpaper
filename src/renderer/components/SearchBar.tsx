@@ -1,4 +1,4 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import type { TagSuggestion } from '@shared/models';
 import { activeToken, replaceActiveToken, suggestPrefix } from '@shared/tags';
 import type { ChangeEvent, FormEvent, KeyboardEvent, ReactElement } from 'react';
@@ -8,8 +8,10 @@ import { useEffect, useRef, useState } from 'react';
 const SUGGEST_DEBOUNCE_MS = 300;
 
 export interface SearchBarProps {
-  site: SiteId;
+  site: AnySiteId;
   disabled: boolean;
+  /** T-53：无联想能力的站点（wallhaven）不请求联想 */
+  suggestEnabled: boolean;
   /** DR-055：最近使用优先的搜索历史；为空时不展示下拉 */
   history: readonly string[];
   onSubmit(query: string): void;
@@ -26,6 +28,7 @@ export interface SearchBarProps {
 export function SearchBar({
   site,
   disabled,
+  suggestEnabled,
   history,
   onSubmit,
   onSelectHistory,
@@ -60,11 +63,28 @@ export function SearchBar({
     setHighlight(-1);
   };
 
+  // T-53：切站后丢弃上一站点残留的联想结果
+  useEffect(() => {
+    const resetTimer = window.setTimeout(() => {
+      requestSeq.current += 1;
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setSuggestions([]);
+      setHighlight(-1);
+    }, 0);
+    return () => {
+      window.clearTimeout(resetTimer);
+    };
+  }, [site, suggestEnabled]);
+
   const scheduleSuggest = (text: string): void => {
     cancelSuggest();
+    // T-53：站点没有联想能力时不发请求
+    if (!suggestEnabled) return;
     const prefix = suggestPrefix(activeToken(text));
     if (prefix === null) return;
-
     const seq = requestSeq.current;
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
@@ -235,7 +255,12 @@ export function SearchBar({
               </div>
               <ul className="search-history__list" role="listbox" aria-label="搜索历史">
                 {history.map((item) => (
-                  <li className="search-history__item" key={item} role="option" aria-selected={false}>
+                  <li
+                    className="search-history__item"
+                    key={item}
+                    role="option"
+                    aria-selected={false}
+                  >
                     <button
                       type="button"
                       className="search-history__query"

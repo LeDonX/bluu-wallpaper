@@ -1,5 +1,5 @@
 import { type SqlDatabase, withTransaction } from '@main/storage/db';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import type { FavoriteEntry } from '@shared/favorites';
 import { type Post, type PostTag, type Rating, RATINGS } from '@shared/models';
 import { z } from 'zod';
@@ -10,9 +10,9 @@ import { z } from 'zod';
  */
 export interface FavoritesStore {
   /** 已收藏则取消并返回 false，未收藏则写入快照与收藏记录并返回 true */
-  toggle(site: SiteId, post: Post): boolean;
+  toggle(site: AnySiteId, post: Post): boolean;
   /** 该站点全部收藏条目，按收藏时间降序 */
-  list(site: SiteId): FavoriteEntry[];
+  list(site: AnySiteId): FavoriteEntry[];
 }
 
 interface FavoriteRow {
@@ -29,6 +29,7 @@ interface FavoriteRow {
   score: number | null;
   tags_json: string | null;
   created_at: number | null;
+  source: string | null;
 }
 
 const TagsSchema = z.array(z.object({ name: z.string(), type: z.string() }));
@@ -48,7 +49,7 @@ function parseTags(raw: string | null): PostTag[] {
   }
 }
 
-function toPost(row: FavoriteRow, site: SiteId): Post {
+function toPost(row: FavoriteRow, site: AnySiteId): Post {
   return {
     site,
     id: row.post_id,
@@ -62,15 +63,16 @@ function toPost(row: FavoriteRow, site: SiteId): Post {
     rating: isRating(row.rating) ? row.rating : 'safe',
     score: row.score ?? 0,
     tags: parseTags(row.tags_json),
-    createdAt: row.created_at ?? 0
+    createdAt: row.created_at ?? 0,
+    ...(row.source !== null && row.source !== '' ? { source: row.source } : {})
   };
 }
 
 const UPSERT_POST_SQL = `
 INSERT INTO posts (
   site, post_id, md5, preview_url, sample_url, file_url,
-  width, height, file_size, rating, score, tags_json, created_at, cached_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  width, height, file_size, rating, score, tags_json, created_at, source, cached_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(site, post_id) DO UPDATE SET
   md5 = excluded.md5,
   preview_url = excluded.preview_url,
@@ -83,6 +85,7 @@ ON CONFLICT(site, post_id) DO UPDATE SET
   score = excluded.score,
   tags_json = excluded.tags_json,
   created_at = excluded.created_at,
+  source = excluded.source,
   cached_at = excluded.cached_at
 `;
 
@@ -98,7 +101,7 @@ export function createFavoritesStore(database: SqlDatabase): FavoritesStore {
   const listFavorites = database.prepare(
     `SELECT
       f.post_id, f.added_at, p.md5, p.preview_url, p.sample_url, p.file_url,
-      p.width, p.height, p.file_size, p.rating, p.score, p.tags_json, p.created_at
+      p.width, p.height, p.file_size, p.rating, p.score, p.tags_json, p.created_at, p.source
     FROM favorites f
     LEFT JOIN posts p ON p.site = f.site AND p.post_id = f.post_id
     WHERE f.site = ?
@@ -128,6 +131,7 @@ export function createFavoritesStore(database: SqlDatabase): FavoritesStore {
           post.score,
           JSON.stringify(post.tags),
           post.createdAt,
+          post.source ?? '',
           now
         );
         insertFavorite.run(site, post.id, now);

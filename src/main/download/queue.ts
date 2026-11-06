@@ -4,7 +4,7 @@ import { appendFile, open, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 
 import type { DownloadsStore } from '@main/storage/downloads';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 import {
   canApplyAction,
   type DownloadAction,
@@ -523,7 +523,7 @@ export function createDownloadQueue(options: DownloadQueueOptions): DownloadQueu
   /** 按站点补足并发；本轮已分配的名额先记入 runningBySite，防止同一轮重复启动 */
   const tick = (): void => {
     const tasks = store.list();
-    const runningBySite = new Map<SiteId, number>();
+    const runningBySite = new Map<AnySiteId, number>();
     for (const [taskId] of active) {
       const task = tasks.find((item) => item.id === taskId);
       if (task === undefined) continue;
@@ -761,7 +761,7 @@ function clampConcurrency(value: number): number {
 function findReusableTask(
   tasks: readonly DownloadTask[],
   claimed: ReadonlySet<string>,
-  site: SiteId,
+  site: AnySiteId,
   postId: number,
   md5: string,
   url: string

@@ -1,5 +1,5 @@
 import { type SqlDatabase, withTransaction } from '@main/storage/db';
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 
 /**
  * 02 §6.1 / 03 §6.2：已看标记的存取。
@@ -7,9 +7,9 @@ import type { SiteId } from '@shared/constants';
  */
 export interface ViewsStore {
   /** 已看过则累加次数并刷新 last_at；返回实际写入条数 */
-  mark(site: SiteId, postIds: readonly number[]): number;
+  mark(site: AnySiteId, postIds: readonly number[]): number;
   /** 批量筛出已看过的 id（03 §6.2），顺序与入参无关 */
-  listViewed(site: SiteId, postIds: readonly number[]): number[];
+  listViewed(site: AnySiteId, postIds: readonly number[]): number[];
 }
 
 interface PostIdRow {

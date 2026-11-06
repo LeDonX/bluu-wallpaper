@@ -22,6 +22,12 @@ import {
   parseHostmapConfig
 } from '@shared/hostmap';
 import {
+  defaultProvidersConfig,
+  parseProvidersConfig,
+  type ProvidersConfig,
+  validateProviderKey
+} from '@shared/providers';
+import {
   defaultNetworkConfig,
   isValidProxyHost,
   isValidProxyPort,
@@ -40,6 +46,8 @@ export interface Settings {
   content: ContentConfig;
   downloads: DownloadConfig;
   network: NetworkConfig;
+  /** 07 DR-071：第三方图库密钥，空白表示未配置 */
+  providers: ProvidersConfig;
 }
 
 /** `settings:get` 的返回：设置本体 + 主进程解析后的默认下载目录（渲染层无法自行取 userData） */
@@ -59,7 +67,8 @@ export function defaultSettings(): Settings {
     hostmap: defaultHostmapConfig(),
     content: defaultContentConfig(),
     downloads: defaultDownloadConfig(),
-    network: defaultNetworkConfig()
+    network: defaultNetworkConfig(),
+    providers: defaultProvidersConfig()
   };
 }
 
@@ -73,7 +82,8 @@ export function parseSettings(raw: unknown): Settings {
     hostmap: parseHostmapConfig(record['hostmap']),
     content: parseContentConfig(record['content']),
     downloads: parseDownloadConfig(record['downloads']),
-    network: parseNetworkConfig(record['network'])
+    network: parseNetworkConfig(record['network']),
+    providers: parseProvidersConfig(record['providers'])
   };
 }
 
@@ -140,13 +150,17 @@ export function validateSettings(settings: Settings): string[] {
     }
   });
 
+  // DR-071：key 可留空；非空时只允许紧凑的可见字符，避免把整段配置贴进来
+  const wallhavenError = validateProviderKey(settings.providers.wallhavenApiKey, 'wallhaven API key');
+  if (wallhavenError !== null) errors.push(wallhavenError);
+
   return errors;
 }
 
 function validateDownloadDir(raw: string): string | null {
   const value = raw.trim();
   if (value === '') return null;
-  if (!WINDOWS_ABSOLUTE_PATH.test(value)) return '下载目录需为绝对路径（如 D:\\Bluu）';
+  if (!WINDOWS_ABSOLUTE_PATH.test(value)) return '下载目录需为绝对路径（如 D:\\LePic）';
   const withoutDrive = value.replace(/^[a-z]:/i, '');
   if (PATH_DRIVE_ONLY.test(value) || ILLEGAL_WINDOWS_PATH_CHARS.test(withoutDrive)) {
     return '下载目录包含非法字符';

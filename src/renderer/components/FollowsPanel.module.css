@@ -1,0 +1,203 @@
+/* 02 §8 / 07 DR-069：关注动态面板 */
+.panel {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.addForm {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.addInput {
+  width: 240px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.addInput:focus {
+  border-color: var(--primary);
+}
+
+.primaryButton,
+.refreshButton,
+.sectionAction {
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.primaryButton {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.refreshButton {
+  min-width: 76px;
+}
+
+.primaryButton:hover:not(:disabled),
+.refreshButton:hover:not(:disabled),
+.sectionAction:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.primaryButton:disabled,
+.refreshButton:disabled,
+.sectionAction:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-xs);
+}
+
+.notice {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* DR-072：时间轴与标签页共用同一套「日期/标签分区 + 单行卡片」布局 */
+.scroll {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding-bottom: var(--space-4);
+}
+
+.section {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.unreadBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-size: var(--text-xs);
+}
+
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--danger);
+}
+
+.sectionMeta {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.sectionAction {
+  height: 26px;
+  padding: 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.sectionAction:first-of-type {
+  margin-left: auto;
+}
+
+/* 单行：列数由 FollowsPanel 按容器宽度内联设置，避免换成多行 */
+.row {
+  display: grid;
+  gap: 12px;
+  margin-top: var(--space-2);
+}
+
+.rowGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: var(--space-2);
+}
+
+/* 行末「查看全部 / 查看更多」入口，形态贴近卡片，避免破坏整行基线 */
+.moreTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 140px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.moreTile:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.moreTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.moreMeta {
+  font-size: var(--text-xs);
+}
+
+.sectionEmpty {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}

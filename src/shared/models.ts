@@ -1,4 +1,4 @@
-import type { SiteId } from '@shared/constants';
+import type { AnySiteId } from '@shared/constants';
 
 /** 06 §3：站点返回单字符分级，适配器与 UI 统一使用全称 */
 export const RATINGS = ['safe', 'questionable', 'explicit'] as const;
@@ -38,7 +38,8 @@ export interface TagSuggestion {
 
 /** 03 §5.2 归一化后的 Post；时间统一为 epoch 毫秒（05 §7） */
 export interface Post {
-  site: SiteId;
+  /** T-50：多源内容共用同一 Post 形状，站点标识扩到全集 */
+  site: AnySiteId;
   id: number;
   md5: string;
   previewUrl: string;

@@ -31,7 +31,7 @@ export function isUsableDirectory(path: string): boolean {
 }
 
 function canWriteDirectory(path: string): boolean {
-  const probe = join(path, `.bluu-write-probe-${process.pid}`);
+  const probe = join(path, `.lepic-write-probe-${process.pid}`);
   try {
     writeFileSync(probe, '');
     return true;
