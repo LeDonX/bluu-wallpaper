@@ -567,7 +567,7 @@ nsis:
 publish:
   provider: github
   owner: LeDonX
-  repo: bluu-wallpaper             # DR-066：GitHub 仓库暂未改名，改名后同步此处
+  repo: lepic                      # DR-066：GitHub 仓库已由 bluu-wallpaper 改名为 lepic（2026-11-06）
 ```
 
 打包事实与前置条件（DR-053，2026-11-05 会话 57 实测）：

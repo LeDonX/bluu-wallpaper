@@ -38,4 +38,4 @@ nsis:
 publish:
   provider: github
   owner: LeDonX
-  repo: bluu-wallpaper
+  repo: lepic
